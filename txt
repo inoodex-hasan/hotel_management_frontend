@@ -1,0 +1,5 @@
+layout.tsx	Geist (imported, CSS var --font-geist-sans set)
+globals.css	--font-sans: var(--font-geist-sans) (Tailwind maps font-sans → Geist)
+body	font-family: Arial, Helvetica, sans-serif (overrides Geist)
+Navbar	No font-* class → inherits Arial from body
+. data-lenis-prevent

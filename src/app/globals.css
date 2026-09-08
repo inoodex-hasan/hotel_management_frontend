@@ -1,0 +1,100 @@
+@import "tailwindcss";
+@import "lenis/dist/lenis.css";
+
+:root {
+  --background: #f9f9f9;
+  --foreground: #121212;
+  --accent: #ff784e;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-accent: var(--accent);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+img,
+video {
+  max-width: 100%;
+  height: auto;
+}
+
+input,
+button,
+textarea,
+select {
+  font: inherit;
+}
+
+/* Smooth Scrollbar - Global */
+html,
+html.lenis,
+html.lenis body {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(232, 93, 4, 0.6) transparent;
+}
+
+html::-webkit-scrollbar,
+html.lenis::-webkit-scrollbar {
+  width: 6px;
+}
+
+html::-webkit-scrollbar-track,
+html.lenis::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+html::-webkit-scrollbar-thumb,
+html.lenis::-webkit-scrollbar-thumb {
+  background-color: rgba(232, 93, 4, 0.6);
+  border-radius: 9999px;
+}
+
+html::-webkit-scrollbar-thumb:hover,
+html.lenis::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(232, 93, 4, 0.9);
+}
+
+/* Custom Scrollbar */
+.custom-scrollbar {
+  scrollbar-width: thin !important;
+  scrollbar-color: rgba(232, 93, 4, 0.5) transparent !important;
+  scroll-behavior: smooth !important;
+  overscroll-behavior: contain !important;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 5px !important;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: rgba(232, 93, 4, 0.5) !important;
+  border-radius: 9999px !important;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(232, 93, 4, 0.7) !important;
+}

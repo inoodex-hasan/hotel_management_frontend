@@ -1,0 +1,190 @@
+CHANGES LOG - The Azura Hotel
+==============================
+
+TECHNOLOGIES USED:
+==================
+Framework:     Next.js 16.3.3
+Language:      TypeScript 5
+UI Library:    React 19.2.8
+Styling:       Tailwind CSS 4
+Animation:     GSAP 3 + ScrollTrigger
+Smooth Scroll: Lenis
+Icons:         Lucide React
+Fonts:         Geist (next/font/google)
+Build:         Turbopack
+Linting:       ESLint 9
+Compiler:      React Compiler (experimental)
+
+----------------------------------------------------------
+
+KEY CONCEPTS - DATA-LENIS-PREVENT:
+===================================
+
+What:   Lenis er ekta HTML attribute
+Keno:   Lenis sob scroll event capture kore, mobile menu te scroll korte gele page o scroll hoy
+Ki hobe: Attribute thakle Lenis ei element ke ignore kore, native browser scroll allow kore
+
+Use Cases:
+- Mobile menu → menu scroll, page不动
+- Modal/Popup → modal scroll, background不动
+- Sidebar → sidebar scroll, main content不动
+- Chat box → chat scroll, page不动
+
+Example:
+  <div data-lenis-prevent className="overflow-y-auto max-h-[80vh]">
+    ...content...
+  </div>
+
+Without data-lenis-prevent:
+  Mouse wheel scroll → Page + Menu duto scroll hoy (jhamela)
+
+With data-lenis-prevent:
+  Mouse wheel scroll → Shudhu Menu scroll hoy (page不动)
+
+----------------------------------------------------------
+
+KEY CONCEPTS - GSAP CONTEXT:
+==============================
+
+What:   GSAP er ekta cleanup system
+Keno:   React e component mount/unmount hoy, animation pile up kore
+Ki hobe: gsap.context() diye animation track kore, unmount e sob revert kore
+
+Example:
+  useEffect(() => {
+    const ctx = gsap.context(() => {
+      gsap.to(".element", { opacity: 1 });
+    }, scopeRef);
+    return () => ctx.revert(); // cleanup
+  }, []);
+
+Without gsap.context:
+  Component unmount → Animation thake → Memory leak + glitch
+
+With gsap.context:
+  Component unmount → ctx.revert() → Sob animation kill
+
+----------------------------------------------------------
+
+KEY CONCEPTS - SCROLLTRIGGER:
+===============================
+
+What:   GSAP er scroll-based animation plugin
+Keno:   Scroll position onujai animation trigger korte hobe
+Ki hobe: Element viewport e asle animation start hoy
+
+Options:
+  trigger:   Kon element trigger korte hobe
+  start:     Kothay start hoy (e.g., "top bottom" = element top viewport bottom e)
+  end:       Kothay shesh hoy
+  scrub:     Scroll onujai animation progress hoy (true/false)
+  pin:       Element ke fixed kore rakhe scroll e
+  markers:   Development e debug markers dekhay
+
+Example:
+  gsap.to(".box", {
+    scrollTrigger: {
+      trigger: ".box",
+      start: "top 80%",
+      scrub: true,
+    },
+    y: 100,
+    opacity: 1,
+  });
+
+Without ScrollTrigger:
+  Animation page load e shuru hoy, scroll e kono effect nai
+
+With ScrollTrigger:
+  Element viewport e asle animation start hoy, scroll e progress hoy
+
+----------------------------------------------------------
+
+KEY CONCEPTS - LENIS LERP:
+=============================
+
+What:   Linear Interpolation — scroll er smoothness control kore
+Keno:   Direct scroll jhuri lage, lerp diye smooth kore
+Ki hobe: Value 0.01-1 — kom = beshi smooth (slow), beshi = kom smooth (fast)
+
+Values:
+  lerp: 0.01 → Onek smooth (slow响应)
+  lerp: 0.1  → Medium smooth (balanced)
+  lerp: 0.5  → Kom smooth (fast响应)
+  lerp: 1.0  → Native scroll (smoothness nai)
+
+Current: lerp: 0.08 — balanced, smooth but responsive
+
+Without lerp:
+  Scroll e element jhuri lage, premium feel nai
+
+With lerp:
+  Scroll e element smooth bhabe move hoy, luxury feel
+
+----------------------------------------------------------
+
+KEY CONCEPTS - GSAP TICKER:
+==============================
+
+What:   GSAP er internal animation loop (requestAnimationFrame)
+Keno:   Lenis + GSAP duitai RAF use kore, separate thakle conflict hoy
+Ki hobe: Duitai ekta ticker e chalabo, frame-perfect sync hobe
+
+Example:
+  gsap.ticker.add(raf); // Lenis ke ticker e add
+  gsap.ticker.lagSmoothing(0); // Lag smoothing off
+
+Without ticker sync:
+  Lenis: RAF loop 1 (60fps)
+  GSAP:  RAF loop 2 (60fps)
+  Result: 2 loops, 1-2 frame lag, jitter
+
+With ticker sync:
+  Lenis + GSAP: Ekta RAF loop (60fps)
+  Result: Frame-perfect, smooth animation
+
+----------------------------------------------------------
+
+FEATURES:
+=========
+
+1. LENIS + GSAP
+   Added: Smooth scrolling + animation library
+   Why: Premium feel, smooth scroll, scroll animations
+   How: Lenis smooth scroll, GSAP scroll animation, synced via ticker
+
+2. ORANGE COLOR (#e85d04)
+   Added: Brand color palette
+   Why: Hotel er jonno consistent color lagbe
+   How: CSS variable + Tailwind theme, single change e sob change hoy
+
+3. NAVBAR
+   Added: Sticky nav with dropdown, mobile menu, search
+   Why: Main navigation
+   How: Desktop dropdown, mobile hamburger, search overlay
+
+4. HERO SLIDER
+   Added: Full screen image slider with GSAP transition
+   Why: First impression
+   How: 3 images, auto-play 4s, GSAP crossfade, arrow/dots control
+
+5. BOOKING BAR
+   Added: Check-in, Check-out, Guests, Rooms selector
+   Why: Direct booking from homepage
+   How: 4 fields, responsive grid, CTA button
+
+6. RESPONSIVE DESIGN
+   Added: Mobile + Tablet + Desktop support
+   Why: Sob device e properly dekhte hobe
+   How: Mobile-first CSS, breakpoints, adaptive layouts
+
+7. MOBILE SCROLLBAR
+   Added: Custom orange scrollbar on mobile menu
+   Why: Menu scroll needed
+   How: data-lenis-prevent + overflow-y-auto + custom CSS
+
+
+9. VIEWPORT META
+   Added: Proper mobile viewport settings
+   Why: Mobile e correctly scale hobe
+   How: width=device-width, initialScale=1
