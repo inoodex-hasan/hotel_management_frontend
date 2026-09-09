@@ -458,10 +458,41 @@ export async function getGalleryItems(category?: string): Promise<GalleryItem[]>
 export async function getTestimonials(): Promise<TestimonialItem[]> {
   try {
     const res = await fetchJson<{ data: TestimonialItem[] }>("/testimonials");
-    return res.data;
+    return (res.data || []).map((t) => ({
+      ...t,
+      avatar: t.avatar ? formatImageUrl(t.avatar) : undefined,
+    }));
   } catch (error) {
-    console.warn("API getTestimonials error", error);
-    return [];
+    console.warn("API getTestimonials error, falling back to static data", error);
+    return [
+      {
+        id: 1,
+        quote:
+          "The Azura exceeded every expectation. The atmosphere was peaceful, the food was outstanding, and the staff made us feel genuinely welcome.",
+        name: "Daniel Morgan",
+        location: "New York, United States",
+        stay: "Executive Room",
+        rating: 5,
+      },
+      {
+        id: 2,
+        quote:
+          "A beautifully designed hotel with incredible attention to detail. Our weekend escape was exactly what we needed. We will definitely return.",
+        name: "Emma Wilson",
+        location: "Melbourne, Australia",
+        stay: "Deluxe Suite",
+        rating: 5,
+      },
+      {
+        id: 3,
+        quote:
+          "An absolute masterclass in luxury hospitality. The butler service was immaculate, and the sunset views from the terrace are unmatched.",
+        name: "Sofia Al-Mansoor",
+        location: "Dubai, UAE",
+        stay: "Presidential Suite",
+        rating: 5,
+      },
+    ];
   }
 }
 
@@ -546,6 +577,15 @@ export interface HotelSettings {
   instagram_url?: string;
   twitter_url?: string;
   youtube_url?: string;
+
+  // Experience Spotlight Banner
+  experience_label?: string;
+  experience_title?: string;
+  experience_subtitle?: string;
+  experience_image?: string;
+  experience_video_url?: string;
+  experience_button_text?: string;
+  experience_button_link?: string;
 }
 
 /**
@@ -554,7 +594,11 @@ export interface HotelSettings {
 export async function getSettings(): Promise<HotelSettings> {
   try {
     const res = await fetchJson<{ data: HotelSettings }>("/settings");
-    return res.data;
+    const data = res.data;
+    if (data.experience_image) {
+      data.experience_image = formatImageUrl(data.experience_image);
+    }
+    return data;
   } catch (error) {
     console.warn("API getSettings error, falling back to defaults", error);
     return {
@@ -567,6 +611,12 @@ export async function getSettings(): Promise<HotelSettings> {
       instagram_url: "https://instagram.com",
       twitter_url: "https://twitter.com",
       youtube_url: "https://youtube.com",
+      experience_label: "The Azura Experience",
+      experience_title: "Where every stay becomes a memory.",
+      experience_subtitle: "Immerse yourself in panoramic coastal luxury, exceptional gastronomy, and refined seaside serenity.",
+      experience_image: "/images/room2.avif",
+      experience_button_text: "Explore Suites",
+      experience_button_link: "/rooms",
     };
   }
 }
