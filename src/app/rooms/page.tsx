@@ -16,8 +16,7 @@ import {
   Phone,
 } from "lucide-react";
 
-import { roomsData } from "@/lib/roomsData";
-import { getRoomTypes, RoomType } from "@/lib/api";
+import { getRoomTypes, RoomType, getSettings, HotelSettings } from "@/lib/api";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -25,14 +24,29 @@ function RoomsPageInner() {
   const pageRef = useRef<HTMLDivElement>(null);
   const searchParams = useSearchParams();
   const bp = `checkin=${searchParams.get("checkin") || ""}&checkout=${searchParams.get("checkout") || ""}&adults=${searchParams.get("adults") || "2"}&children=${searchParams.get("children") || "0"}&rooms=${searchParams.get("rooms") || "1"}`;
-  const [rooms, setRooms] = useState<RoomType[]>(() => roomsData as unknown as RoomType[]);
+  const [rooms, setRooms] = useState<RoomType[]>([]);
+  const [settings, setSettings] = useState<HotelSettings | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    getRoomTypes().then((data) => {
-      if (data && data.length > 0) {
-        setRooms(data);
-      }
-    });
+    let isMounted = true;
+    Promise.allSettled([getRoomTypes(), getSettings()])
+      .then(([roomsRes, settingsRes]) => {
+        if (!isMounted) return;
+        if (roomsRes.status === "fulfilled") setRooms(roomsRes.value || []);
+        if (settingsRes.status === "fulfilled" && settingsRes.value) setSettings(settingsRes.value);
+      })
+      .catch((err) => {
+        console.warn("Failed to load room types:", err);
+      })
+      .finally(() => {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      });
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -67,7 +81,11 @@ function RoomsPageInner() {
       {/* HERO */}
       <section className="relative min-h-[55vh] flex items-end overflow-hidden pt-[86px] lg:min-h-[65vh]">
         <div className="absolute inset-0">
-          <div className="absolute inset-0 bg-cover bg-center scale-105" style={{ backgroundImage: "url('/images/room1.avif')" }} />
+          {rooms[0]?.image ? (
+            <div className="absolute inset-0 bg-cover bg-center scale-105" style={{ backgroundImage: `url('${rooms[0].image}')` }} />
+          ) : (
+            <div className="absolute inset-0 bg-gradient-to-br from-[#1c1c1c] via-[#121212] to-black" />
+          )}
         </div>
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-black/20" />
         <div className="absolute inset-0 bg-gradient-to-r from-black/40 to-transparent" />
@@ -89,32 +107,34 @@ function RoomsPageInner() {
               <a href="#rooms" className="group inline-flex items-center gap-3 bg-[#ff784e] text-white px-7 py-3.5 text-[11px] font-bold uppercase tracking-[0.12em] hover:bg-white hover:text-[#1a1a1a] transition-all duration-300 rounded-lg">
                 View Rooms <ArrowUpRight size={15} className="transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
               </a>
-              <a href="tel:+8801401777888" className="inline-flex items-center gap-2 border border-white/25 text-white px-7 py-3.5 text-[11px] font-bold uppercase tracking-[0.12em] hover:border-[#ff784e] hover:text-[#ff784e] transition-all duration-300 rounded-lg">
-                <Phone size={14} /> Call to Book
-              </a>
+              <Link href="/contact" className="inline-flex items-center gap-2 border border-white/25 text-white px-7 py-3.5 text-[11px] font-bold uppercase tracking-[0.12em] hover:border-[#ff784e] hover:text-[#ff784e] transition-all duration-300 rounded-lg">
+                <Phone size={14} /> Contact Concierge
+              </Link>
             </div>
           </div>
         </div>
       </section>
 
       {/* STATS STRIP */}
-      <section className="stats-strip border-b border-black/5 bg-white">
-        <div className="max-w-[1500px] mx-auto px-6 lg:px-10">
-          <div className="grid grid-cols-2 lg:grid-cols-4">
-            {[
-              { value: "6", label: "Room Types" },
-              { value: "320+", label: "Sq Ft to 1200" },
-              { value: "24/7", label: "Room Service" },
-              { value: "5★", label: "Suite Rating" },
-            ].map((stat, i) => (
-              <div key={stat.label} className={`stat-item flex items-center gap-4 py-6 lg:py-8 ${i < 3 ? "lg:border-r lg:border-black/5" : ""} ${i === 0 ? "" : "border-l border-black/5 lg:border-l-0"}`}>
-                <span className="text-2xl sm:text-3xl font-serif font-light text-[#ff784e]">{stat.value}</span>
-                <span className="text-[10px] font-medium uppercase tracking-wider text-black/40 leading-tight">{stat.label}</span>
-              </div>
-            ))}
+      {rooms.length > 0 && (
+        <section className="stats-strip border-b border-black/5 bg-white">
+          <div className="max-w-[1500px] mx-auto px-6 lg:px-10">
+            <div className="grid grid-cols-2 lg:grid-cols-4">
+              {[
+                { value: `${rooms.length}`, label: "Room Types" },
+                { value: "100%", label: "Verified Luxury" },
+                { value: "24/7", label: "Concierge & Service" },
+                { value: "5★", label: "Guest Satisfaction" },
+              ].map((stat, i) => (
+                <div key={stat.label} className={`stat-item flex items-center gap-4 py-6 lg:py-8 ${i < 3 ? "lg:border-r lg:border-black/5" : ""} ${i === 0 ? "" : "border-l border-black/5 lg:border-l-0"}`}>
+                  <span className="text-2xl sm:text-3xl font-serif font-light text-[#ff784e]">{stat.value}</span>
+                  <span className="text-[10px] font-medium uppercase tracking-wider text-black/40 leading-tight">{stat.label}</span>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* ROOMS LIST */}
       <section id="rooms" className="rooms-list py-16 lg:py-24 bg-[#fafafa]">
@@ -131,88 +151,122 @@ function RoomsPageInner() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {rooms.map((room) => (
-              <div key={room.slug} id={room.slug} className="room-block scroll-mt-24 group overflow-hidden border border-black/[0.08] bg-white hover:shadow-[0_8px_40px_rgba(0,0,0,0.08)] transition-all duration-500">
-                {/* IMAGE */}
-                <div className="relative block aspect-[4/3] overflow-hidden bg-black">
-                  <img src={room.image} alt={room.name} className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105" />
-                  <div className="absolute inset-0 bg-black/10 transition-all duration-500 group-hover:bg-black/25" />
-                  {room.tag && (
-                    <div className="absolute left-2 top-2 sm:left-3 sm:top-3">
-                      <span className="px-2 py-1 text-[9px] font-semibold uppercase tracking-wider sm:px-3 sm:py-1.5 sm:text-[10px] bg-[#ff784e] text-white">{room.tag}</span>
-                    </div>
-                  )}
-                  <div className="absolute top-2 right-2 sm:top-3 sm:right-3">
-                    <span className="px-2 py-1 text-[8px] font-medium uppercase tracking-wider bg-black/50 text-white backdrop-blur-sm rounded-sm sm:px-3 sm:py-1.5">{room.floor}</span>
+          {isLoading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <div key={i} className="overflow-hidden border border-black/[0.08] bg-white animate-pulse">
+                  <div className="aspect-[4/3] bg-black/10" />
+                  <div className="p-6 space-y-3">
+                    <div className="h-5 w-3/4 bg-black/10 rounded" />
+                    <div className="h-3 w-1/2 bg-black/10 rounded" />
+                    <div className="h-16 bg-black/5 rounded mt-4" />
+                    <div className="h-8 bg-black/10 rounded mt-4" />
                   </div>
                 </div>
-
-                {/* CONTENT */}
-                <div className="p-4 sm:p-6">
-                  <h3 className="text-sm font-semibold leading-tight text-black sm:text-lg group-hover:text-[#ff784e] transition-colors">{room.name}</h3>
-                  <p className="mt-0.5 text-[11px] text-black/40">{room.subtitle}</p>
-
-                  <div className="mt-1.5 flex gap-0.5 sm:mt-2">
-                    {Array.from({ length: 5 }).map((_, i) => (
-                      <Star key={i} size={12} className={`${i < room.stars ? "fill-[#ff784e] text-[#ff784e]" : "text-black/15"} sm:size-3.5`} />
-                    ))}
-                  </div>
-
-                  <div className="mt-3 space-y-2 sm:mt-4 sm:space-y-2.5">
-                    <div className="flex items-center gap-2.5">
-                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-[#ff784e]/10">
-                        <Maximize2 size={13} className="text-[#ff784e]" />
-                      </span>
-                      <span className="text-[12px] font-medium text-black/70 sm:text-[13px]">
-                        Room Size: <span className="text-black/90">{room.size}</span>
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2.5">
-                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-[#ff784e]/10">
-                        <BedDouble size={13} className="text-[#ff784e]" />
-                      </span>
-                      <span className="text-[12px] font-medium text-black/70 sm:text-[13px]">
-                        Bed: <span className="text-black/90">{room.bed}</span>
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2.5">
-                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-[#ff784e]/10">
-                        <Users size={13} className="text-[#ff784e]" />
-                      </span>
-                      <span className="text-[12px] font-medium text-black/70 sm:text-[13px]">
-                        Max: <span className="text-black/90">{room.maxGuests}</span>
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Price + View */}
-                  <div className="mt-4 flex items-end justify-between border-t border-black/[0.08] pt-4 sm:mt-5 sm:pt-5">
-                    <div>
-                      <span className="text-xl font-bold tracking-tight text-black sm:text-2xl">
-                        &#x09F3;{room.price}
-                      </span>
-                      <span className="ml-1 text-[10px] font-medium uppercase tracking-wide text-black/40">
-                        /Night (Net)
-                      </span>
-                    </div>
-                    <Link href={`/rooms/${room.slug}?${bp}`}
-                      className="group/link flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-[#ff784e] transition-colors hover:text-black sm:text-[12px]">
-                      View Detail
-                      <ArrowUpRight size={14} className="transition-transform duration-300 group-hover/link:-translate-y-0.5 group-hover/link:translate-x-0.5" />
-                    </Link>
-                  </div>
-                </div>
+              ))}
+            </div>
+          ) : rooms.length === 0 ? (
+            <div className="mx-auto max-w-xl text-center py-16 px-6 rounded-2xl border border-black/[0.06] bg-white shadow-sm">
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#ff784e]/10 text-[#ff784e] mb-4">
+                <BedDouble size={28} />
               </div>
-            ))}
-          </div>
+              <h3 className="text-xl sm:text-2xl font-serif font-light text-[#1a1a1a]">No Rooms Available Currently</h3>
+              <p className="mt-3 text-sm text-black/50 leading-relaxed max-w-md mx-auto">
+                We are currently updating our room collections and availability. Please reach out to our concierge desk for inquiries, bespoke reservations, or upcoming suite schedules.
+              </p>
+              <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+                <a href="tel:+8801401777888" className="inline-flex items-center gap-2 bg-[#ff784e] text-white px-6 py-3 text-[11px] font-bold uppercase tracking-[0.12em] hover:bg-[#1a1a1a] transition-all rounded-lg">
+                  <Phone size={13} /> Call Reception
+                </a>
+                <Link href="/contact" className="inline-flex items-center gap-2 border border-black/15 text-[#1a1a1a] px-6 py-3 text-[11px] font-bold uppercase tracking-[0.12em] hover:border-[#ff784e] hover:text-[#ff784e] transition-all rounded-lg">
+                  Contact Us
+                </Link>
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {rooms.map((room) => (
+                <div key={room.slug} id={room.slug} className="room-block scroll-mt-24 group overflow-hidden border border-black/[0.08] bg-white hover:shadow-[0_8px_40px_rgba(0,0,0,0.08)] transition-all duration-500">
+                  {/* IMAGE */}
+                  <div className="relative block aspect-[4/3] overflow-hidden bg-black">
+                    <img src={room.image} alt={room.name} className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105" />
+                    <div className="absolute inset-0 bg-black/10 transition-all duration-500 group-hover:bg-black/25" />
+                    {room.tag && (
+                      <div className="absolute left-2 top-2 sm:left-3 sm:top-3">
+                        <span className="px-2 py-1 text-[9px] font-semibold uppercase tracking-wider sm:px-3 sm:py-1.5 sm:text-[10px] bg-[#ff784e] text-white">{room.tag}</span>
+                      </div>
+                    )}
+                    <div className="absolute top-2 right-2 sm:top-3 sm:right-3">
+                      <span className="px-2 py-1 text-[8px] font-medium uppercase tracking-wider bg-black/50 text-white backdrop-blur-sm rounded-sm sm:px-3 sm:py-1.5">{room.floor}</span>
+                    </div>
+                  </div>
+
+                  {/* CONTENT */}
+                  <div className="p-4 sm:p-6">
+                    <h3 className="text-sm font-semibold leading-tight text-black sm:text-lg group-hover:text-[#ff784e] transition-colors">{room.name}</h3>
+                    <p className="mt-0.5 text-[11px] text-black/40">{room.subtitle}</p>
+
+                    <div className="mt-1.5 flex gap-0.5 sm:mt-2">
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <Star key={i} size={12} className={`${i < room.stars ? "fill-[#ff784e] text-[#ff784e]" : "text-black/15"} sm:size-3.5`} />
+                      ))}
+                    </div>
+
+                    <div className="mt-3 space-y-2 sm:mt-4 sm:space-y-2.5">
+                      <div className="flex items-center gap-2.5">
+                        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-[#ff784e]/10">
+                          <Maximize2 size={13} className="text-[#ff784e]" />
+                        </span>
+                        <span className="text-[12px] font-medium text-black/70 sm:text-[13px]">
+                          Room Size: <span className="text-black/90">{room.size}</span>
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2.5">
+                        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-[#ff784e]/10">
+                          <BedDouble size={13} className="text-[#ff784e]" />
+                        </span>
+                        <span className="text-[12px] font-medium text-black/70 sm:text-[13px]">
+                          Bed: <span className="text-black/90">{room.bed}</span>
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2.5">
+                        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-[#ff784e]/10">
+                          <Users size={13} className="text-[#ff784e]" />
+                        </span>
+                        <span className="text-[12px] font-medium text-black/70 sm:text-[13px]">
+                          Max: <span className="text-black/90">{room.maxGuests}</span>
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Price + View */}
+                    <div className="mt-4 flex items-end justify-between border-t border-black/[0.08] pt-4 sm:mt-5 sm:pt-5">
+                      <div>
+                        <span className="text-xl font-bold tracking-tight text-black sm:text-2xl">
+                          &#x09F3;{room.price}
+                        </span>
+                        <span className="ml-1 text-[10px] font-medium uppercase tracking-wide text-black/40">
+                          /Night (Net)
+                        </span>
+                      </div>
+                      <Link href={`/rooms/${room.slug}?${bp}`}
+                        className="group/link flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-[#ff784e] transition-colors hover:text-black sm:text-[12px]">
+                        View Detail
+                        <ArrowUpRight size={14} className="transition-transform duration-300 group-hover/link:-translate-y-0.5 group-hover/link:translate-x-0.5" />
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
       {/* CTA */}
       <section className="cta-section cta-block relative py-20 lg:py-28 bg-[#1a1a1a] overflow-hidden">
-        <div className="absolute inset-0 opacity-10"><img src="/images/about/about-hero.jpg" alt="" className="w-full h-full object-cover" /></div>
-        <div className="absolute inset-0 bg-[#1a1a1a]/80" />
+        <div className="absolute inset-0 bg-gradient-to-br from-[#1c1c1c] via-[#141414] to-black" />
+        <div className="absolute inset-0 bg-[#1a1a1a]/60" />
         <div className="absolute top-8 left-8 h-16 w-16 border-t border-l border-[#ff784e]/20" />
         <div className="absolute bottom-8 right-8 h-16 w-16 border-b border-r border-[#ff784e]/20" />
         <div className="relative z-10 max-w-[1500px] mx-auto px-6 lg:px-10 text-center">
@@ -228,11 +282,11 @@ function RoomsPageInner() {
             Our team is available 24/7 to help you choose the best room for your needs. Call us or book online.
           </p>
           <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
-            <a href="tel:+8801401777888" className="group inline-flex items-center gap-4 bg-[#ff784e] text-white px-10 py-5 text-xs font-bold uppercase tracking-[0.18em] hover:bg-white hover:text-[#1a1a1a] transition-all duration-300">
-              Call +880 1401 777 888 <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+            <a href={`tel:${(settings?.contact_phone || "+880 1401 777 888").replace(/\s+/g, "")}`} className="group inline-flex items-center gap-4 bg-[#ff784e] text-white px-10 py-5 text-xs font-bold uppercase tracking-[0.18em] hover:bg-white hover:text-[#1a1a1a] transition-all duration-300">
+              Call {settings?.contact_phone || "+880 1401 777 888"} <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
             </a>
-            <Link href="/booking" className="inline-flex items-center gap-3 border border-white/20 text-white px-10 py-5 text-xs font-bold uppercase tracking-[0.18em] hover:border-[#ff784e] hover:text-[#ff784e] transition-all duration-300">
-              Book Online
+            <Link href="/contact" className="inline-flex items-center gap-3 border border-white/20 text-white px-10 py-5 text-xs font-bold uppercase tracking-[0.18em] hover:border-[#ff784e] hover:text-[#ff784e] transition-all duration-300">
+              Contact Concierge
             </Link>
           </div>
         </div>

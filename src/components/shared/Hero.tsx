@@ -16,49 +16,7 @@ import {
 import gsap from "gsap";
 import DatePicker from "./DatePicker";
 
-import { getHeroSlides, HeroSlide, formatImageUrl } from "@/lib/api";
-
-const DEFAULT_SLIDES: HeroSlide[] = [
-  {
-    id: 1,
-    image: "/images/room1.avif",
-    image_url: "/images/room1.avif",
-    title: "Escape to Refinement & Grace",
-    subtitle: "Welcome to The Azura",
-    description: "Stay close to nature, comfort, and breathtaking views. The Azura welcomes you to unwind and enjoy every moment.",
-    badge_text: "Welcome to The Azura",
-    button_text: "Book Your Stay",
-    button_link: "/booking",
-    order: 1,
-    is_active: true,
-  },
-  {
-    id: 2,
-    image: "/images/room2.avif",
-    image_url: "/images/room2.avif",
-    title: "Unmatched Luxury & Ocean Panoramas",
-    subtitle: "World-Class Comfort",
-    description: "Indulge in private balconies, bespoke amenities, and personalized 24/7 concierge services in the heart of Cox's Bazar.",
-    badge_text: "Panoramic Sea Views",
-    button_text: "Explore Suites",
-    button_link: "/rooms",
-    order: 2,
-    is_active: true,
-  },
-  {
-    id: 3,
-    image: "/images/room3.avif",
-    image_url: "/images/room3.avif",
-    title: "An Unforgettable Coastal Sanctuary",
-    subtitle: "Exclusive Living",
-    description: "Savor artisanal culinary creations, infinity rooftop pool, and restorative wellness therapies overlooking the azure horizon.",
-    badge_text: "Private Penthouse Living",
-    button_text: "Discover Dining",
-    button_link: "/dining",
-    order: 3,
-    is_active: true,
-  },
-];
+import { getHeroSlides, HeroSlide, formatImageUrl, getSettings, HotelSettings } from "@/lib/api";
 
 const NAV_HEIGHT = 80;
 const GAP = 10;
@@ -149,7 +107,9 @@ export default function Hero() {
   const contentRef = useRef<HTMLDivElement>(null);
   const bookingRef = useRef<HTMLDivElement>(null);
   const slideRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const [slides, setSlides] = useState<HeroSlide[]>(DEFAULT_SLIDES);
+  const [slides, setSlides] = useState<HeroSlide[]>([]);
+  const [settings, setSettings] = useState<HotelSettings | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [current, setCurrent] = useState(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -167,11 +127,20 @@ export default function Hero() {
   const [roomsPos, setRoomsPos] = useState<DropdownPos>({ left: 0 });
 
   useEffect(() => {
-    getHeroSlides().then((data) => {
-      if (data && data.length > 0) {
-        setSlides(data);
+    let isMounted = true;
+    Promise.allSettled([getHeroSlides(), getSettings()]).then(([slidesRes, settingsRes]) => {
+      if (!isMounted) return;
+      if (slidesRes.status === "fulfilled") {
+        setSlides(slidesRes.value || []);
       }
+      if (settingsRes.status === "fulfilled" && settingsRes.value) {
+        setSettings(settingsRes.value);
+      }
+      setIsLoading(false);
     });
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const closeAll = () => { setDateOpen(false); setGuestsOpen(false); setRoomsOpen(false); };
@@ -282,29 +251,38 @@ export default function Hero() {
     </button>
   );
 
-  const activeSlide = slides[current] || slides[0] || DEFAULT_SLIDES[0];
+  const activeSlide = slides.length > 0 ? slides[current] || slides[0] : null;
 
   return (
     <section className="relative min-h-[100dvh] bg-black sm:h-screen">
 
-      {/* IMAGE SLIDER */}
+      {/* BACKGROUND / SLIDER */}
       <div ref={heroRef} className="absolute inset-0 h-full w-full overflow-hidden">
-        {slides.map((slide, i) => {
-          const rawSrc = slide.image || slide.image_url || "/images/room1.avif";
-          const imgSrc = formatImageUrl(rawSrc);
-          return (
-            <div key={`${slide.id || i}-${imgSrc}`} ref={(el) => { slideRefs.current[i] = el; }}
-              className="absolute inset-0 h-full w-full"
-              style={{ opacity: i === current ? 1 : 0, zIndex: i === current ? 1 : 0 }}>
-              <Image src={imgSrc} alt={slide.title || "Luxury Hotel Room"} fill priority={i === 0}
-                className="object-cover object-center" sizes="100vw" unoptimized />
-            </div>
-          );
-        })}
+        {slides.length > 0 ? (
+          slides.map((slide, i) => {
+            const imgSrc = formatImageUrl(slide.image || slide.image_url);
+            return (
+              <div key={`${slide.id || i}-${imgSrc}`} ref={(el) => { slideRefs.current[i] = el; }}
+                className="absolute inset-0 h-full w-full"
+                style={{ opacity: i === current ? 1 : 0, zIndex: i === current ? 1 : 0 }}>
+                {imgSrc ? (
+                  <Image src={imgSrc} alt={slide.title || "Hero Slide"} fill priority={i === 0}
+                    className="object-cover object-center" sizes="100vw" unoptimized />
+                ) : (
+                  <div className="absolute inset-0 h-full w-full bg-gradient-to-br from-[#1c1c1c] via-[#121212] to-black" />
+                )}
+              </div>
+            );
+          })
+        ) : (
+          <div className="absolute inset-0 h-full w-full bg-gradient-to-br from-[#1c1c1c] via-[#121212] to-black">
+            <div className="pointer-events-none absolute left-1/2 top-1/3 h-[500px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#ff784e]/10 blur-[150px]" />
+          </div>
+        )}
       </div>
 
       <div className="absolute inset-0 z-[2] bg-black/40" />
-      <div className="absolute inset-0 z-[2] bg-gradient-to-b from-black/30 via-transparent to-black/60" />
+      <div className="absolute inset-0 z-[2] bg-gradient-to-b from-black/40 via-transparent to-black/70" />
 
       {/* SLIDER CONTROLS */}
       {slides.length > 1 && (
@@ -339,34 +317,44 @@ export default function Hero() {
       {/* HERO CONTENT */}
       <div ref={contentRef}
         className="relative z-10 mx-auto flex min-h-[100dvh] max-w-[1500px] flex-col items-center justify-center px-4 pt-[70px] pb-[240px] text-center sm:h-screen sm:px-8 sm:pt-20 sm:pb-[180px] lg:px-10 lg:pt-32 lg:pb-60">
+        
+        {/* Badge / Subtitle */}
         <div className="hero-label mb-3 flex items-center gap-1.5 sm:mb-6 sm:gap-3">
           <span className="h-px w-5 bg-[#ff784e] sm:w-10" />
           <span className="text-[8px] font-semibold uppercase tracking-[0.18em] text-white sm:text-[11px] sm:tracking-[0.3em]">
-            {activeSlide.badge_text || activeSlide.subtitle || "Welcome to The Azura"}
+            {activeSlide?.badge_text || activeSlide?.subtitle || settings?.app_name || "Welcome"}
           </span>
           <span className="h-px w-5 bg-[#ff784e] sm:w-10" />
         </div>
+
+        {/* Title */}
         <h1 className="hero-title text-[28px] font-light leading-[1.05] tracking-[-0.02em] text-white sm:text-5xl md:text-6xl lg:text-7xl xl:text-[88px]">
-          {activeSlide.title ? (
+          {activeSlide?.title ? (
             <span>{activeSlide.title}</span>
           ) : (
-            <>Welcome to<br /><span className="font-semibold">The Azura</span></>
+            <span>{settings?.app_name || "The Azura Hotel"}</span>
           )}
         </h1>
-        <p className="hero-description mt-3 max-w-[280px] px-1 text-[10px] leading-[1.4] text-white/80 sm:mt-7 sm:max-w-2xl sm:text-sm sm:leading-7 md:text-base">
-          {activeSlide.description || "Stay close to nature, comfort, and breathtaking views. The Azura welcomes you to unwind and enjoy every moment."}
-        </p>
+
+        {/* Description */}
+        {(activeSlide?.description || settings?.hotel_tagline) && (
+          <p className="hero-description mt-3 max-w-[280px] px-1 text-[10px] leading-[1.4] text-white/80 sm:mt-7 sm:max-w-2xl sm:text-sm sm:leading-7 md:text-base">
+            {activeSlide?.description || settings?.hotel_tagline}
+          </p>
+        )}
+
+        {/* Action Buttons */}
         <div className="hero-actions mt-4 flex w-full max-w-xs flex-col gap-2.5 sm:mt-9 sm:max-w-none sm:flex-row sm:justify-center sm:gap-3">
-          <Link href={activeSlide.button_link || "/booking"}
+          <Link href={activeSlide?.button_link || "/rooms"}
             className="group flex w-full items-center justify-center gap-3 bg-[#ff784e] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-white transition-all duration-300 hover:bg-white hover:text-black sm:w-fit sm:gap-4 sm:px-6 sm:py-3.5 sm:text-[12px]">
-            {activeSlide.button_text || "Book Your Stay"}
+            {activeSlide?.button_text || "Explore Rooms"}
             <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white text-black transition-all duration-300 group-hover:bg-[#ff784e] group-hover:text-white sm:h-7 sm:w-7">
               <ArrowUpRight size={13} />
             </span>
           </Link>
           <Link href="/rooms"
             className="flex w-full items-center justify-center gap-2.5 border border-white/40 px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-white transition-all duration-300 hover:border-white hover:bg-white hover:text-black sm:w-fit sm:gap-3 sm:px-6 sm:py-3.5 sm:text-[12px]">
-            Explore Rooms
+            Check Availability
           </Link>
         </div>
       </div>

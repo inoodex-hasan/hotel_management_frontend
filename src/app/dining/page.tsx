@@ -11,46 +11,9 @@ import {
   MapPin,
   UtensilsCrossed,
 } from "lucide-react";
-import { getDiningVenues, DiningItem } from "@/lib/api";
+import { getDiningVenues, DiningItem, getSettings, HotelSettings } from "@/lib/api";
 
 gsap.registerPlugin(ScrollTrigger);
-
-const DEFAULT_RESTAURANTS: DiningItem[] = [
-  {
-    id: 1,
-    slug: "the-restaurant",
-    name: "The Restaurant",
-    title: "Experience exquisite cuisine at The Restaurant",
-    label: "BON APPÉTIT DURING VACATIONS AND TRIPS",
-    description:
-      "Our experienced chefs create international specialties with unique flavors. Relax with gourmet cuisine and signature cocktails, all enhanced by beautiful music and gorgeous views. From seasonal menus to dining experiences to satisfy any craving, see what our chefs are preparing for you.",
-    image: "/images/dining/restaurant.avif",
-    details: {
-      location: "Lobby Level",
-      serves: "Breakfast, Brunch, Lunch, Dinner, Dessert",
-      phone: "+880 1401 777 888",
-      hours: "7:00 AM - 10:00 PM",
-    },
-    features: ["International Menu", "Private Dining", "Wine Collection", "Ocean View"],
-  },
-  {
-    id: 2,
-    slug: "the-rooftop-restaurant-bar",
-    name: "The Rooftop Restaurant & Bar",
-    title: "The Rooftop Restaurant & Bar",
-    label: "BON APPÉTIT DURING VACATIONS AND TRIPS",
-    description:
-      "Enjoy the stunning rooftop views from The Azura's Rooftop Bar. Relax with gourmet cuisine and signature cocktails or homemade tonics, all enhanced by beautiful music and gorgeous views. Perfect for evening cocktails and starlit dinners.",
-    image: "/images/dining/hotel-experience.avif",
-    details: {
-      location: "Rooftop",
-      serves: "Brunch, Lunch, Dinner, Wines",
-      phone: "+880 1401 777 888",
-      hours: "11:00 AM - Midnight",
-    },
-    features: ["Skyline Views", "Craft Cocktails", "Live Music", "Lounge Seating"],
-  },
-];
 
 const menuCategories = [
   { name: "Breakfast", icon: "☀", time: "7:00 AM - 10:30 AM" },
@@ -61,18 +24,22 @@ const menuCategories = [
 
 export default function DiningPage() {
   const pageRef = useRef<HTMLDivElement>(null);
-  const [restaurants, setRestaurants] = useState<DiningItem[]>(DEFAULT_RESTAURANTS);
+  const [restaurants, setRestaurants] = useState<DiningItem[]>([]);
+  const [settings, setSettings] = useState<HotelSettings | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    getDiningVenues()
-      .then((data) => {
-        if (data && data.length > 0) {
-          setRestaurants(data);
-        }
-      })
-      .catch((err) => {
-        console.warn("Failed to load dining venues:", err);
+    let isMounted = true;
+    Promise.allSettled([getDiningVenues(), getSettings()])
+      .then(([venuesRes, settingsRes]) => {
+        if (!isMounted) return;
+        if (venuesRes.status === "fulfilled") setRestaurants(venuesRes.value || []);
+        if (settingsRes.status === "fulfilled") setSettings(settingsRes.value);
+        setIsLoading(false);
       });
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -90,7 +57,7 @@ export default function DiningPage() {
         }
         if (content) {
           gsap.fromTo(content, { x: 60, opacity: 0 }, {
-            x: 0, opacity: 1, duration: 1, ease: "power3.out", delay: 0.2,
+            x: 0, opacity: 1, duration: 1, ease: "power3.out",
             scrollTrigger: { trigger: section, start: "top 80%", toggleActions: "play none none none" },
           });
         }
@@ -113,7 +80,11 @@ export default function DiningPage() {
       {/* HERO */}
       <section className="relative min-h-[70vh] lg:min-h-[85vh] flex items-center overflow-hidden pt-[86px]">
         <div className="absolute inset-0">
-          <img src="/images/dining/restaurant.avif" alt="Dining" className="w-full h-full object-cover" />
+          {restaurants[0]?.image ? (
+            <img src={restaurants[0].image} alt="Dining" className="w-full h-full object-cover" />
+          ) : (
+            <div className="w-full h-full bg-gradient-to-br from-[#1c1c1c] via-[#121212] to-black" />
+          )}
           <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/55 to-black/25" />
         </div>
         <div className="relative z-10 w-full max-w-[1500px] mx-auto px-6 lg:px-10 py-20 lg:py-0">
@@ -132,9 +103,11 @@ export default function DiningPage() {
               <Link href="/booking" className="group inline-flex items-center gap-3 bg-[#ff784e] px-8 py-4 text-[11px] font-bold uppercase tracking-[0.15em] text-white hover:bg-white hover:text-[#1a1a1a] transition-all duration-300">
                 Reserve a Table <ArrowUpRight size={15} className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
               </Link>
-              <a href="tel:+8801401777888" className="inline-flex items-center gap-3 border border-white/25 px-8 py-4 text-[11px] font-bold uppercase tracking-[0.15em] text-white hover:border-[#ff784e] hover:text-[#ff784e] transition-all duration-300">
-                <Phone size={14} /> Call to Order
-              </a>
+              {settings?.contact_phone && (
+                <a href={`tel:${settings.contact_phone.replace(/\s+/g, "")}`} className="inline-flex items-center gap-3 border border-white/25 px-8 py-4 text-[11px] font-bold uppercase tracking-[0.15em] text-white hover:border-[#ff784e] hover:text-[#ff784e] transition-all duration-300">
+                  <Phone size={14} /> Call to Order
+                </a>
+              )}
             </div>
           </div>
         </div>
@@ -160,89 +133,128 @@ export default function DiningPage() {
       </section>
 
       {/* RESTAURANT SECTIONS */}
-      {restaurants.map((rest, idx) => {
-        const isReversed = idx % 2 === 1;
-        const details = rest.details || {
-          location: (rest as any).location || "Lobby Level",
-          serves: (rest as any).serves || "International",
-          phone: (rest as any).phone || "+880 1401 777 888",
-          hours: (rest as any).hours || "7:00 AM - 10:00 PM",
-        };
-        const features = rest.features || [];
-
-        return (
-          <section key={rest.id || idx} className="restaurant-section py-20 lg:py-28 border-b border-black/[0.04] last:border-b-0">
-            <div className={`max-w-[1500px] mx-auto px-6 lg:px-10 grid lg:grid-cols-2 gap-12 lg:gap-20 items-center`}>
-              <div className={`rest-img overflow-hidden rounded-2xl ${isReversed ? "lg:order-2" : ""}`}>
-                <div className="relative aspect-[4/3] overflow-hidden rounded-2xl group bg-black/5">
-                  <img
-                    src={rest.image || "/images/dining/restaurant.avif"}
-                    alt={rest.title || rest.name}
-                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                    onError={(e) => {
-                      (e.currentTarget as HTMLImageElement).src = "/images/dining/restaurant.avif";
-                    }}
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
+      {isLoading ? (
+        <section className="py-20 lg:py-28">
+          <div className="max-w-[1500px] mx-auto px-6 lg:px-10 space-y-12">
+            {[1, 2].map((i) => (
+              <div key={i} className="grid lg:grid-cols-2 gap-12 items-center animate-pulse">
+                <div className="aspect-[4/3] bg-black/10 rounded-2xl" />
+                <div className="space-y-4">
+                  <div className="h-4 w-1/4 bg-black/10 rounded" />
+                  <div className="h-8 w-3/4 bg-black/10 rounded" />
+                  <div className="h-16 bg-black/5 rounded" />
                 </div>
               </div>
-              <div className={`rest-content ${isReversed ? "lg:order-1" : ""}`}>
-                <span className="text-[#ff784e] text-[10px] font-bold uppercase tracking-[0.25em]">{rest.label || "Dining Venue"}</span>
-                <h2 className="mt-4 text-3xl sm:text-4xl lg:text-[42px] font-serif font-light leading-[1.15] text-[#1a1a1a]">
-                  {rest.title || rest.name}
-                </h2>
-                <p className="mt-5 text-black/50 text-[14px] leading-[1.8]">{rest.description}</p>
-
-                <div className="mt-7 space-y-3">
-                  {details.location && (
-                    <div className="flex items-center gap-3 text-[13px]">
-                      <MapPin size={15} className="text-[#ff784e] shrink-0" />
-                      <span className="text-black/40">Location:</span>
-                      <span className="text-[#1a1a1a] font-medium">{details.location}</span>
-                    </div>
-                  )}
-                  {details.serves && (
-                    <div className="flex items-center gap-3 text-[13px]">
-                      <UtensilsCrossed size={15} className="text-[#ff784e] shrink-0" />
-                      <span className="text-black/40">Serves:</span>
-                      <span className="text-[#1a1a1a] font-medium">{details.serves}</span>
-                    </div>
-                  )}
-                  {details.phone && (
-                    <div className="flex items-center gap-3 text-[13px]">
-                      <Phone size={15} className="text-[#ff784e] shrink-0" />
-                      <span className="text-black/40">Phone:</span>
-                      <span className="text-[#1a1a1a] font-medium">{details.phone}</span>
-                    </div>
-                  )}
-                  {details.hours && (
-                    <div className="flex items-center gap-3 text-[13px]">
-                      <Clock size={15} className="text-[#ff784e] shrink-0" />
-                      <span className="text-black/40">Hours:</span>
-                      <span className="text-[#1a1a1a] font-medium">{details.hours}</span>
-                    </div>
-                  )}
-                </div>
-
-                {features.length > 0 && (
-                  <div className="mt-6 flex flex-wrap gap-2">
-                    {features.map((f) => (
-                      <span key={f} className="px-3 py-1.5 text-[10px] font-medium text-[#ff784e] bg-[#ff784e]/[0.06] border border-[#ff784e]/10 rounded-full">
-                        {f}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
+            ))}
+          </div>
+        </section>
+      ) : restaurants.length === 0 ? (
+        <section className="py-20 lg:py-28">
+          <div className="max-w-xl mx-auto px-6 text-center">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#ff784e]/10 text-[#ff784e] mb-4">
+              <UtensilsCrossed size={28} />
             </div>
-          </section>
-        );
-      })}
+            <h3 className="text-xl sm:text-2xl font-serif font-light text-[#1a1a1a]">Dining Venues Updating</h3>
+            <p className="mt-3 text-sm text-black/50 leading-relaxed">
+              We are currently updating our dining menus and restaurant hours. Please call our concierge or in-room dining team for reservations and orders.
+            </p>
+            <div className="mt-6 flex justify-center">
+              <a href="tel:+8801401777888" className="inline-flex items-center gap-2 bg-[#ff784e] text-white px-6 py-3 text-[11px] font-bold uppercase tracking-[0.12em] hover:bg-[#1a1a1a] transition-all rounded-lg">
+                <Phone size={13} /> Call +880 1401 777 888
+              </a>
+            </div>
+          </div>
+        </section>
+      ) : (
+        restaurants.map((rest, idx) => {
+          const isReversed = idx % 2 === 1;
+          const details = rest.details || {
+            location: (rest as any).location || "Lobby Level",
+            serves: (rest as any).serves || "International",
+            phone: (rest as any).phone || "+880 1401 777 888",
+            hours: (rest as any).hours || "7:00 AM - 10:00 PM",
+          };
+          const features = rest.features || [];
+
+          return (
+            <section key={rest.id || idx} className="restaurant-section py-20 lg:py-28 border-b border-black/[0.04] last:border-b-0">
+              <div className={`max-w-[1500px] mx-auto px-6 lg:px-10 grid lg:grid-cols-2 gap-12 lg:gap-20 items-center`}>
+                <div className={`rest-img overflow-hidden rounded-2xl ${isReversed ? "lg:order-2" : ""}`}>
+                  <div className="relative aspect-[4/3] overflow-hidden rounded-2xl group bg-black/5">
+                    {rest.image ? (
+                      <img
+                        src={rest.image}
+                        alt={rest.title || rest.name}
+                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-br from-[#1c1c1c] via-[#141414] to-black" />
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
+                  </div>
+                </div>
+                <div className={`rest-content ${isReversed ? "lg:order-1" : ""}`}>
+                  <span className="text-[#ff784e] text-[10px] font-bold uppercase tracking-[0.25em]">{rest.label || "Dining Venue"}</span>
+                  <h2 className="mt-4 text-3xl sm:text-4xl lg:text-[42px] font-serif font-light leading-[1.15] text-[#1a1a1a]">
+                    {rest.title || rest.name}
+                  </h2>
+                  <p className="mt-5 text-black/50 text-[14px] leading-[1.8]">{rest.description}</p>
+
+                  <div className="mt-7 space-y-3">
+                    {details.location && (
+                      <div className="flex items-center gap-3 text-[13px]">
+                        <MapPin size={15} className="text-[#ff784e] shrink-0" />
+                        <span className="text-black/40">Location:</span>
+                        <span className="text-[#1a1a1a] font-medium">{details.location}</span>
+                      </div>
+                    )}
+                    {details.serves && (
+                      <div className="flex items-center gap-3 text-[13px]">
+                        <UtensilsCrossed size={15} className="text-[#ff784e] shrink-0" />
+                        <span className="text-black/40">Serves:</span>
+                        <span className="text-[#1a1a1a] font-medium">{details.serves}</span>
+                      </div>
+                    )}
+                    {details.phone && (
+                      <div className="flex items-center gap-3 text-[13px]">
+                        <Phone size={15} className="text-[#ff784e] shrink-0" />
+                        <span className="text-black/40">Phone:</span>
+                        <span className="text-[#1a1a1a] font-medium">{details.phone}</span>
+                      </div>
+                    )}
+                    {details.hours && (
+                      <div className="flex items-center gap-3 text-[13px]">
+                        <Clock size={15} className="text-[#ff784e] shrink-0" />
+                        <span className="text-black/40">Hours:</span>
+                        <span className="text-[#1a1a1a] font-medium">{details.hours}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {features.length > 0 && (
+                    <div className="mt-6 flex flex-wrap gap-2">
+                      {features.map((f) => (
+                        <span key={f} className="px-3 py-1.5 text-[10px] font-medium text-[#ff784e] bg-[#ff784e]/[0.06] border border-[#ff784e]/10 rounded-full">
+                          {f}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </section>
+          );
+        })
+      )}
 
       {/* IN-ROOM DINING */}
       <section className="relative py-24 lg:py-32 overflow-hidden">
         <div className="absolute inset-0">
-          <img src="/images/rooms/room-1.avif" alt="In-Room Dining" className="w-full h-full object-cover" />
+          {restaurants[1]?.image || restaurants[0]?.image ? (
+            <img src={restaurants[1]?.image || restaurants[0]?.image} alt="In-Room Dining" className="w-full h-full object-cover" />
+          ) : (
+            <div className="w-full h-full bg-gradient-to-br from-[#181818] via-[#101010] to-black" />
+          )}
           <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/70 to-black/30" />
         </div>
         <div className="relative z-10 max-w-[1500px] mx-auto px-6 lg:px-10">
@@ -252,31 +264,35 @@ export default function DiningPage() {
               Refuel on Your <span className="italic text-[#ff784e]">Own Schedule</span>
             </h2>
             <p className="mt-5 text-white/55 text-[15px] leading-[1.8]">
-              Seasonal, locally fresh items delivered to your door. Enjoy gourmet meals in the comfort of your room with our 24-hour in-room dining service.
+              Seasonal, locally fresh items delivered to your door. Enjoy gourmet meals in the comfort of your room with our in-room dining service.
             </p>
 
             <div className="mt-7 space-y-3">
               <div className="flex items-center gap-3 text-[13px]">
                 <UtensilsCrossed size={15} className="text-[#ff784e] shrink-0" />
                 <span className="text-white/50">Serves:</span>
-                <span className="text-white font-medium">Breakfast, Brunch, Lunch, Dinner, Dessert</span>
+                <span className="text-white font-medium">Breakfast, Lunch, Dinner, Beverages</span>
               </div>
-              <div className="flex items-center gap-3 text-[13px]">
-                <Phone size={15} className="text-[#ff784e] shrink-0" />
-                <span className="text-white/50">Phone:</span>
-                <span className="text-white font-medium">+880 1401 777 888</span>
-              </div>
+              {settings?.contact_phone && (
+                <div className="flex items-center gap-3 text-[13px]">
+                  <Phone size={15} className="text-[#ff784e] shrink-0" />
+                  <span className="text-white/50">Phone:</span>
+                  <span className="text-white font-medium">{settings.contact_phone}</span>
+                </div>
+              )}
               <div className="flex items-center gap-3 text-[13px]">
                 <Clock size={15} className="text-[#ff784e] shrink-0" />
                 <span className="text-white/50">Hours:</span>
-                <span className="text-white font-medium">24 Hours</span>
+                <span className="text-white font-medium">Available Daily</span>
               </div>
             </div>
 
             <div className="mt-8 flex flex-wrap gap-4">
-              <a href="tel:+8801401777888" className="group inline-flex items-center gap-3 bg-[#ff784e] px-8 py-4 text-[11px] font-bold uppercase tracking-[0.15em] text-white hover:bg-white hover:text-[#1a1a1a] transition-all duration-300">
-                Order Now <ArrowUpRight size={15} className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
-              </a>
+              {settings?.contact_phone && (
+                <a href={`tel:${settings.contact_phone.replace(/\s+/g, "")}`} className="group inline-flex items-center gap-3 bg-[#ff784e] px-8 py-4 text-[11px] font-bold uppercase tracking-[0.15em] text-white hover:bg-white hover:text-[#1a1a1a] transition-all duration-300">
+                  Order Now <ArrowUpRight size={15} className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                </a>
+              )}
             </div>
           </div>
         </div>

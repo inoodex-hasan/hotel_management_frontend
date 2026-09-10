@@ -7,7 +7,7 @@ export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api/v1";
 
 export function formatImageUrl(url?: string): string {
-  if (!url) return "/images/room1.avif";
+  if (!url) return "";
   if (url.startsWith("http://") || url.startsWith("https://")) {
     // If backend returned localhost without port 8000 for storage, fix it:
     if (url.includes("localhost/storage") || url.includes("127.0.0.1/storage")) {
@@ -247,16 +247,16 @@ export async function getRoomTypes(params?: {
 }): Promise<RoomType[]> {
   try {
     const searchParams = new URLSearchParams();
-    searchParams.set("hotel_slug", params?.hotel_slug || "the-azura-hotel-suites");
+    if (params?.hotel_slug) searchParams.set("hotel_slug", params.hotel_slug);
     if (params?.hotel_id) searchParams.set("hotel_id", String(params.hotel_id));
     if (params?.per_page) searchParams.set("per_page", String(params.per_page));
 
-    const res = await fetchJson<{ data: RoomType[] }>(`/room-types?${searchParams.toString()}`);
+    const queryStr = searchParams.toString() ? `?${searchParams.toString()}` : "";
+    const res = await fetchJson<{ data: RoomType[] }>(`/room-types${queryStr}`);
     return (res.data || []).map(normalizeRoomType);
   } catch (error) {
-    console.warn("API getRoomTypes error, falling back to static data", error);
-    const { roomsData } = await import("./roomsData");
-    return (roomsData as unknown as RoomType[]).map(normalizeRoomType);
+    console.warn("API getRoomTypes error", error);
+    return [];
   }
 }
 
@@ -266,7 +266,7 @@ export async function getRoomTypes(params?: {
 export async function getHotels(): Promise<any[]> {
   try {
     const res = await fetchJson<{ data: any[] }>("/hotels");
-    return res.data;
+    return res.data || [];
   } catch (error) {
     console.warn("API getHotels error", error);
     return [];
@@ -281,10 +281,8 @@ export async function getRoomTypeBySlug(slug: string): Promise<RoomType | null> 
     const res = await fetchJson<{ data: RoomType }>(`/room-types/${slug}`);
     return res.data ? normalizeRoomType(res.data) : null;
   } catch (error) {
-    console.warn(`API getRoomTypeBySlug(${slug}) error, falling back to static data`, error);
-    const { roomsData } = await import("./roomsData");
-    const found = (roomsData.find((r) => r.slug === slug) as unknown as RoomType) || null;
-    return found ? normalizeRoomType(found) : null;
+    console.warn(`API getRoomTypeBySlug(${slug}) error`, error);
+    return null;
   }
 }
 
@@ -320,9 +318,6 @@ export async function getDiningVenues(): Promise<DiningItem[]> {
   }
 }
 
-/**
- * Fetch hero slides for home page slider
- */
 export async function getHeroSlides(params?: {
   hotel_slug?: string;
 }): Promise<HeroSlide[]> {
@@ -330,50 +325,14 @@ export async function getHeroSlides(params?: {
     const searchParams = new URLSearchParams();
     if (params?.hotel_slug) searchParams.set("hotel_slug", params.hotel_slug);
     const res = await fetchJson<{ data: HeroSlide[] }>(`/hero-slides?${searchParams.toString()}`);
-    return res.data;
+    return (res.data || []).map((s) => ({
+      ...s,
+      image: formatImageUrl(s.image || s.image_url),
+      image_url: formatImageUrl(s.image_url || s.image),
+    }));
   } catch (error) {
-    console.warn("API getHeroSlides error, falling back to default slides", error);
-    return [
-      {
-        id: 1,
-        title: "Escape to Refinement & Grace",
-        subtitle: "Welcome to The Azura",
-        description: "Where architectural elegance meets panoramic coastal luxury. Discover refined hospitality tailored to your highest expectations.",
-        badge_text: "5-Star Luxury Experience",
-        button_text: "Explore Suites",
-        button_link: "/rooms",
-        image: "/images/room1.avif",
-        image_url: "/images/room1.avif",
-        order: 1,
-        is_active: true,
-      },
-      {
-        id: 2,
-        title: "Unmatched Luxury & Ocean Panoramas",
-        subtitle: "World-Class Comfort",
-        description: "Indulge in private balconies, bespoke amenities, and personalized 24/7 concierge services in the heart of Cox's Bazar.",
-        badge_text: "Panoramic Sea Views",
-        button_text: "Book Your Stay",
-        button_link: "/booking",
-        image: "/images/room2.avif",
-        image_url: "/images/room2.avif",
-        order: 2,
-        is_active: true,
-      },
-      {
-        id: 3,
-        title: "An Unforgettable Coastal Sanctuary",
-        subtitle: "Exclusive Living",
-        description: "Savor artisanal culinary creations, infinity rooftop pool, and restorative wellness therapies overlooking the azure horizon.",
-        badge_text: "Private Penthouse Living",
-        button_text: "Discover Dining",
-        button_link: "/dining",
-        image: "/images/room3.avif",
-        image_url: "/images/room3.avif",
-        order: 3,
-        is_active: true,
-      },
-    ];
+    console.warn("API getHeroSlides error:", error);
+    return [];
   }
 }
 
@@ -389,38 +348,8 @@ export async function getAboutContent(params?: {
     const res = await fetchJson<{ data: AboutContent }>(`/about?${searchParams.toString()}`);
     return res.data;
   } catch (error) {
-    console.warn("API getAboutContent error, falling back to default content", error);
-    return {
-      id: 1,
-      eyebrow: "Welcome to",
-      title: "The Azura Hotel & Resort",
-      subtitle: "A Luxury Beach View Hotel — A Perfect Combination Of Luxuriousness And Affordability.",
-      description: "Situated on the picturesque coastline, The Azura Hotel & Resort offers unmatched convenience and accessibility. Our hotel stands as a beacon of comfort and elegance. With well-appointed rooms, each featuring a private balcony with direct sea views — we promise an experience like no other. Our top-tier amenities, including a swimming pool, gym, complimentary buffet breakfast, and free Wi-Fi, are thoughtfully designed to enhance your stay.",
-      feature_1_title: "Realistic Summer",
-      feature_1_subtitle: "Vacation",
-      feature_2_title: "Luxury Standard",
-      feature_2_subtitle: "Hotel",
-      main_image: "/images/room1.avif",
-      main_image_url: "/images/room1.avif",
-      sub_image: "/images/room2.avif",
-      sub_image_url: "/images/room2.avif",
-      button_text: "Discover More",
-      button_link: "/about",
-      since_year: "Since 2018",
-      story_title: "The Trusted Brand of Luxury Hospitality",
-      story_subtitle: "Enjoy a Luxury Experience in Cox's Bazar",
-      story_description: "Welcome to one of Cox's Bazar's most renowned landmarks, The Azura Hotel & Resort. Since it first opened its doors in 2018, thousands of visitors, including distinguished personalities, have been drawn to its elegant charm and warm hospitality. After years of being part of the tourism growth of Cox's Bazar, we understand the needs of well-travelled guests.",
-      contact_phone: "+880 1401 777 888",
-      contact_email: "reservation.theazura@gmail.com",
-      story_image_1: "/images/about/about-hero.jpg",
-      story_image_2: "/images/about/about-story.jpg",
-      stats: {
-        rooms: 9,
-        guests: "15000+",
-        years: "6+",
-        rating: "5",
-      },
-    };
+    console.warn("API getAboutContent error:", error);
+    return null;
   }
 }
 
@@ -436,19 +365,8 @@ export async function getGalleryItems(category?: string): Promise<GalleryItem[]>
       image: formatImageUrl(item.image),
     }));
   } catch (error) {
-    console.warn("API getGalleryItems error, falling back to static data", error);
-    const defaultGallery: GalleryItem[] = [
-      { id: 1, title: "Grand Lobby", category: "Interior", image: "/images/room1.avif" },
-      { id: 2, title: "Infinity Pool", category: "Experience", image: "/images/room2.avif" },
-      { id: 3, title: "Luxury Suite", category: "Rooms", image: "/images/room3.avif" },
-      { id: 4, title: "Signature Dining", category: "Dining", image: "/images/dining/restaurant.avif" },
-      { id: 5, title: "Wellness & Spa", category: "Wellness", image: "/images/rooms/room-1.avif" },
-      { id: 6, title: "Evening Lounge", category: "Lifestyle", image: "/images/rooms/room-2.avif" },
-    ];
-    if (category && category.toLowerCase() !== "all") {
-      return defaultGallery.filter((i) => i.category.toLowerCase() === category.toLowerCase());
-    }
-    return defaultGallery;
+    console.warn("API getGalleryItems error", error);
+    return [];
   }
 }
 
@@ -463,36 +381,8 @@ export async function getTestimonials(): Promise<TestimonialItem[]> {
       avatar: t.avatar ? formatImageUrl(t.avatar) : undefined,
     }));
   } catch (error) {
-    console.warn("API getTestimonials error, falling back to static data", error);
-    return [
-      {
-        id: 1,
-        quote:
-          "The Azura exceeded every expectation. The atmosphere was peaceful, the food was outstanding, and the staff made us feel genuinely welcome.",
-        name: "Daniel Morgan",
-        location: "New York, United States",
-        stay: "Executive Room",
-        rating: 5,
-      },
-      {
-        id: 2,
-        quote:
-          "A beautifully designed hotel with incredible attention to detail. Our weekend escape was exactly what we needed. We will definitely return.",
-        name: "Emma Wilson",
-        location: "Melbourne, Australia",
-        stay: "Deluxe Suite",
-        rating: 5,
-      },
-      {
-        id: 3,
-        quote:
-          "An absolute masterclass in luxury hospitality. The butler service was immaculate, and the sunset views from the terrace are unmatched.",
-        name: "Sofia Al-Mansoor",
-        location: "Dubai, UAE",
-        stay: "Presidential Suite",
-        rating: 5,
-      },
-    ];
+    console.warn("API getTestimonials error", error);
+    return [];
   }
 }
 
@@ -614,7 +504,7 @@ export async function getSettings(): Promise<HotelSettings> {
       experience_label: "The Azura Experience",
       experience_title: "Where every stay becomes a memory.",
       experience_subtitle: "Immerse yourself in panoramic coastal luxury, exceptional gastronomy, and refined seaside serenity.",
-      experience_image: "/images/room2.avif",
+      experience_image: "",
       experience_button_text: "Explore Suites",
       experience_button_link: "/rooms",
     };

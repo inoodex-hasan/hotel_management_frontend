@@ -8,40 +8,11 @@ import { getTestimonials, TestimonialItem } from "@/lib/api";
 
 gsap.registerPlugin(ScrollTrigger);
 
-const fallbackTestimonials: TestimonialItem[] = [
-  {
-    id: 1,
-    quote:
-      "The Azura exceeded every expectation. The atmosphere was peaceful, the food was outstanding, and the staff made us feel genuinely welcome.",
-    name: "Daniel Morgan",
-    location: "New York, United States",
-    stay: "Executive Room",
-    rating: 5,
-  },
-  {
-    id: 2,
-    quote:
-      "A beautifully designed hotel with incredible attention to detail. Our weekend escape was exactly what we needed. We will definitely return.",
-    name: "Emma Wilson",
-    location: "Melbourne, Australia",
-    stay: "Deluxe Suite",
-    rating: 5,
-  },
-  {
-    id: 3,
-    quote:
-      "An absolute masterclass in luxury hospitality. The butler service was immaculate, and the sunset views from the terrace are unmatched.",
-    name: "Sofia Al-Mansoor",
-    location: "Dubai, UAE",
-    stay: "Presidential Suite",
-    rating: 5,
-  },
-];
-
 export default function TestimonialsSection() {
   const sectionRef = useRef<HTMLElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
-  const [items, setItems] = useState<TestimonialItem[]>(fallbackTestimonials);
+  const [items, setItems] = useState<TestimonialItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [activeIndex, setActiveIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -49,17 +20,31 @@ export default function TestimonialsSection() {
   // Fetch dynamic testimonials
   useEffect(() => {
     let isMounted = true;
-    getTestimonials().then((data) => {
-      if (isMounted && data && data.length > 0) {
-        setItems(data);
-      }
-    });
+    getTestimonials()
+      .then((data) => {
+        if (isMounted) {
+          setItems(data || []);
+        }
+      })
+      .catch((err) => {
+        console.warn("Failed to load testimonials:", err);
+      })
+      .finally(() => {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      });
     return () => {
       isMounted = false;
     };
   }, []);
 
-  const active = items[activeIndex] || items[0] || fallbackTestimonials[0];
+  if (!isLoading && items.length === 0) {
+    return null;
+  }
+
+  const active = items[activeIndex] || items[0];
+  if (!active) return null;
 
   useEffect(() => {
     const ctx = gsap.context(() => {

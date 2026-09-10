@@ -12,14 +12,30 @@ gsap.registerPlugin(ScrollTrigger);
 export default function AboutSection() {
   const sectionRef = useRef<HTMLElement>(null);
   const [about, setAbout] = useState<AboutContent | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    getAboutContent().then((data) => {
-      if (data) setAbout(data);
-    });
+    let isMounted = true;
+    getAboutContent()
+      .then((data) => {
+        if (isMounted) {
+          setAbout(data);
+          setIsLoading(false);
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setAbout(null);
+          setIsLoading(false);
+        }
+      });
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   useEffect(() => {
+    if (!about) return;
     const ctx = gsap.context(() => {
       gsap.from(".about-img-main", {
         x: -80,
@@ -61,10 +77,14 @@ export default function AboutSection() {
     }, sectionRef);
 
     return () => ctx.revert();
-  }, []);
+  }, [about]);
 
-  const mainImg = formatImageUrl(about?.main_image || about?.main_image_url || "/images/room1.avif");
-  const subImg = formatImageUrl(about?.sub_image || about?.sub_image_url || "/images/room2.avif");
+  if (!isLoading && !about) {
+    return null;
+  }
+
+  const mainImg = formatImageUrl(about?.main_image || about?.main_image_url);
+  const subImg = formatImageUrl(about?.sub_image || about?.sub_image_url);
 
   return (
     <section ref={sectionRef} className="relative overflow-hidden bg-gradient-to-br from-[#1a1a1a] via-[#121212] to-[#1c1008] py-16 sm:py-24 lg:py-32">

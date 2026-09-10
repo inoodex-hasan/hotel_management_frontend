@@ -153,15 +153,12 @@ export default function ContactPage() {
     >
       {/* HERO */}
       <section className="relative min-h-[650px] overflow-hidden bg-black pt-[86px] lg:min-h-[720px]">
-        {/* Background */}
-        <img
-          src="/images/contact/hero.jpg"
-          alt={settings.app_name}
-          className="absolute inset-0 h-full w-full object-cover"
-        />
+        {/* Background gradient */}
+        <div className="absolute inset-0 bg-gradient-to-br from-[#1c1c1c] via-[#121212] to-black" />
+        <div className="pointer-events-none absolute left-1/2 top-1/3 h-[500px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#F7580F]/10 blur-[150px]" />
 
         {/* Overlay */}
-        <div className="absolute inset-0 bg-black/55" />
+        <div className="absolute inset-0 bg-black/40" />
         <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/30 to-black/75" />
 
         {/* HERO CONTENT */}

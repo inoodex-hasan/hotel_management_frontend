@@ -14,38 +14,35 @@ import { getDiningVenues, DiningItem } from "@/lib/api";
 
 gsap.registerPlugin(ScrollTrigger);
 
-const DEFAULT_VENUE: DiningItem = {
-  id: 1,
-  slug: "the-restaurant",
-  name: "The Restaurant",
-  title: "A table worth remembering.",
-  label: "Signature Restaurant",
-  description: "Discover a dining experience shaped by fresh ingredients, thoughtful preparation and flavors designed to be enjoyed slowly.",
-  image: "/images/dining/restaurant.avif",
-  details: {
-    location: "Lobby Level",
-    serves: "International",
-    phone: "+880 1401 777 888",
-    hours: "07:00 — 23:00",
-  },
-  features: ["International Menu", "Private Dining", "Wine Collection", "Ocean View"],
-};
-
 export default function DiningSection() {
   const sectionRef = useRef<HTMLElement>(null);
-  const [venue, setVenue] = useState<DiningItem>(DEFAULT_VENUE);
+  const [venue, setVenue] = useState<DiningItem | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    let isMounted = true;
     getDiningVenues()
       .then((venues) => {
-        if (venues && venues.length > 0) {
+        if (isMounted && venues && venues.length > 0) {
           setVenue(venues[0]);
         }
       })
       .catch((err) => {
         console.warn("Failed to load dining venue in DiningSection:", err);
+      })
+      .finally(() => {
+        if (isMounted) {
+          setIsLoading(false);
+        }
       });
+    return () => {
+      isMounted = false;
+    };
   }, []);
+
+  if (!venue) {
+    return null;
+  }
 
   useEffect(() => {
     const ctx = gsap.context(() => {
@@ -126,10 +123,12 @@ export default function DiningSection() {
       className="relative overflow-hidden bg-black py-8 sm:py-14 lg:py-20"
     >
       {/* BG IMAGE */}
-      <div
-        className="absolute inset-x-0 top-0 h-[35%] bg-cover bg-center bg-no-repeat opacity-25 sm:h-[50%] lg:h-[55%]"
-        style={{ backgroundImage: `url('${venue.image || "/images/dining/restaurant.avif"}')` }}
-      />
+      {venue.image && (
+        <div
+          className="absolute inset-x-0 top-0 h-[35%] bg-cover bg-center bg-no-repeat opacity-25 sm:h-[50%] lg:h-[55%]"
+          style={{ backgroundImage: `url('${venue.image}')` }}
+        />
+      )}
       <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/50 to-black/80" />
 
       <div className="relative z-10 mx-auto max-w-[1500px] px-4 sm:px-6 lg:px-10">
@@ -159,14 +158,15 @@ export default function DiningSection() {
           {/* IMAGE */}
           <div className="relative">
             <div className="dining-image group relative aspect-[4/3] overflow-hidden bg-white/5 sm:aspect-[5/3] lg:aspect-[2/1]">
-              <img
-                src={venue.image || "/images/dining/restaurant.avif"}
-                alt={venue.name}
-                className="h-full w-full object-cover object-center transition-transform duration-[1200ms] ease-out group-hover:scale-105"
-                onError={(e) => {
-                  (e.currentTarget as HTMLImageElement).src = "/images/dining/restaurant.avif";
-                }}
-              />
+              {venue.image ? (
+                <img
+                  src={venue.image}
+                  alt={venue.name}
+                  className="h-full w-full object-cover object-center transition-transform duration-[1200ms] ease-out group-hover:scale-105"
+                />
+              ) : (
+                <div className="absolute inset-0 bg-gradient-to-br from-[#1a1a1a] via-[#141414] to-black" />
+              )}
               <div className="absolute inset-0 bg-black/15 transition-all duration-500 group-hover:bg-black/25" />
               <div className="absolute bottom-0 left-0 h-[3px] w-1/3 bg-[#ff784e] transition-all duration-700 group-hover:w-full sm:h-1" />
             </div>

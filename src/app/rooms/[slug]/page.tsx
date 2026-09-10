@@ -31,8 +31,7 @@ import {
   X,
   Camera,
 } from "lucide-react";
-import { roomsData } from "@/lib/roomsData";
-import { getRoomTypeBySlug, getRoomTypes, RoomType } from "@/lib/api";
+import { getRoomTypeBySlug, getRoomTypes, RoomType, getSettings, HotelSettings } from "@/lib/api";
 import DatePicker from "@/components/shared/DatePicker";
 
 gsap.registerPlugin(ScrollTrigger);
@@ -43,18 +42,15 @@ const iconMap: Record<string, React.ComponentType<{ size?: number; className?: s
 
 function RoomDetailInner() {
   const { slug } = useParams();
-  const router = useRouter();
   const searchParams = useSearchParams();
   const pageRef = useRef<HTMLDivElement>(null);
   const [activeImage, setActiveImage] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
 
-  const [room, setRoom] = useState<RoomType | null>(() => {
-    return (roomsData.find((r) => r.slug === slug) as unknown as RoomType) || null;
-  });
-  const [otherRooms, setOtherRooms] = useState<RoomType[]>(() => {
-    return (roomsData.filter((r) => r.slug !== slug).slice(0, 3) as unknown as RoomType[]);
-  });
+  const [room, setRoom] = useState<RoomType | null>(null);
+  const [otherRooms, setOtherRooms] = useState<RoomType[]>([]);
+  const [settings, setSettings] = useState<HotelSettings | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   const [checkIn, setCheckIn] = useState(searchParams.get("checkin") || "");
   const [checkOut, setCheckOut] = useState(searchParams.get("checkout") || "");
@@ -65,33 +61,48 @@ function RoomDetailInner() {
   const [dateMode, setDateMode] = useState<"checkin" | "checkout">("checkin");
 
   const bookingLink = `/checkout?room=${room?.slug}&checkin=${checkIn}&checkout=${checkOut}&adults=${adults}&children=${childrenCount}&rooms=${roomsCount}`;
+  const contactPhone = settings?.contact_phone || "+880 1401 777 888";
 
   useEffect(() => {
+    let isMounted = true;
     if (typeof slug === "string") {
-      getRoomTypeBySlug(slug).then((data) => {
-        if (data) {
-          setRoom(data);
-        }
-      });
-      getRoomTypes().then((all) => {
-        if (all && all.length > 0) {
-          setOtherRooms(all.filter((r) => r.slug !== slug).slice(0, 3));
-        }
-      });
+      setIsLoading(true);
+      Promise.allSettled([
+        getRoomTypeBySlug(slug),
+        getRoomTypes(),
+        getSettings(),
+      ])
+        .then(([roomRes, allRoomsRes, settingsRes]) => {
+          if (isMounted) {
+            if (roomRes.status === "fulfilled") setRoom(roomRes.value);
+            if (allRoomsRes.status === "fulfilled" && allRoomsRes.value && allRoomsRes.value.length > 0) {
+              setOtherRooms(allRoomsRes.value.filter((r) => r.slug !== slug).slice(0, 3));
+            } else {
+              setOtherRooms([]);
+            }
+            if (settingsRes.status === "fulfilled" && settingsRes.value) {
+              setSettings(settingsRes.value);
+            }
+          }
+        })
+        .catch((err) => {
+          console.warn("Error loading room detail:", err);
+        })
+        .finally(() => {
+          if (isMounted) {
+            setIsLoading(false);
+          }
+        });
     }
+    return () => {
+      isMounted = false;
+    };
   }, [slug]);
-
-  useEffect(() => {
-    if (!room && !roomsData.find((r) => r.slug === slug)) {
-      router.replace("/rooms");
-      return;
-    }
-  }, [room, router, slug]);
 
   // Keyboard navigation for lightbox
   useEffect(() => {
     if (!lightboxOpen || !room) return;
-    const galleryList = room.gallery && room.gallery.length > 0 ? room.gallery : [room.image || "/images/room1.avif"];
+    const galleryList = room.gallery && room.gallery.length > 0 ? room.gallery : (room.image ? [room.image] : []);
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setLightboxOpen(false);
       if (e.key === "ArrowLeft") setActiveImage((p) => (p === 0 ? galleryList.length - 1 : p - 1));
@@ -123,11 +134,44 @@ function RoomDetailInner() {
       });
     }, pageRef);
     return () => ctx.revert();
-  }, [slug]);
+  }, [slug, room]);
 
-  if (!room) return null;
+  if (isLoading) {
+    return (
+      <main className="bg-white min-h-[70vh] pt-[120px] flex items-center justify-center">
+        <div className="text-center px-6">
+          <div className="h-10 w-10 border-2 border-[#ff784e] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-sm font-medium text-black/50">Loading suite details...</p>
+        </div>
+      </main>
+    );
+  }
 
-  const gallery = room.gallery && room.gallery.length > 0 ? room.gallery : [room.image || "/images/room1.avif"];
+  if (!room) {
+    return (
+      <main className="bg-white min-h-[75vh] pt-[120px] pb-20 flex items-center justify-center">
+        <div className="max-w-md mx-auto px-6 text-center">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#ff784e]/10 text-[#ff784e] mb-5">
+            <BedDouble size={28} />
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-serif font-light text-[#1a1a1a]">Room Unavailable</h1>
+          <p className="mt-3 text-sm text-black/50 leading-relaxed">
+            The room or suite you are searching for is currently not available in our collection.
+          </p>
+          <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
+            <Link href="/rooms" className="inline-flex items-center gap-2 bg-[#ff784e] text-white px-7 py-3.5 text-[11px] font-bold uppercase tracking-[0.12em] hover:bg-[#1a1a1a] transition-all rounded-lg">
+              Explore All Rooms <ArrowUpRight size={14} />
+            </Link>
+            <a href={`tel:${contactPhone.replace(/\s+/g, "")}`} className="inline-flex items-center gap-2 border border-black/15 text-[#1a1a1a] px-7 py-3.5 text-[11px] font-bold uppercase tracking-[0.12em] hover:border-[#ff784e] hover:text-[#ff784e] transition-all rounded-lg">
+              <Phone size={13} /> Call Concierge
+            </a>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  const gallery = room.gallery && room.gallery.length > 0 ? room.gallery : (room.image ? [room.image] : []);
   const highlights = room.highlights || [];
   const amenities = room.amenities || [];
 
@@ -135,7 +179,7 @@ function RoomDetailInner() {
     <main ref={pageRef} className="bg-white text-black overflow-hidden">
 
       {/* LIGHTBOX MODAL */}
-      {lightboxOpen && (
+      {lightboxOpen && gallery.length > 0 && (
         <div className="fixed inset-0 z-[150] flex flex-col justify-between bg-black/95 backdrop-blur-2xl p-4 sm:p-6" onClick={() => setLightboxOpen(false)}>
           {/* Top Header */}
           <div className="flex items-center justify-between z-20" onClick={(e) => e.stopPropagation()}>
@@ -167,56 +211,66 @@ function RoomDetailInner() {
             </div>
 
             {/* Navigation Arrows */}
-            <button
-              type="button"
-              onClick={() => setActiveImage((p) => (p === 0 ? gallery.length - 1 : p - 1))}
-              className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 flex h-11 w-11 sm:h-14 sm:w-14 items-center justify-center rounded-full border border-white/25 bg-black/50 text-white backdrop-blur-md hover:border-[#ff784e] hover:bg-[#ff784e] transition"
-              aria-label="Previous image"
-            >
-              <ChevronLeft size={22} />
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveImage((p) => (p === gallery.length - 1 ? 0 : p + 1))}
-              className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 flex h-11 w-11 sm:h-14 sm:w-14 items-center justify-center rounded-full border border-white/25 bg-black/50 text-white backdrop-blur-md hover:border-[#ff784e] hover:bg-[#ff784e] transition"
-              aria-label="Next image"
-            >
-              <ChevronRight size={22} />
-            </button>
+            {gallery.length > 1 && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setActiveImage((p) => (p === 0 ? gallery.length - 1 : p - 1))}
+                  className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 flex h-11 w-11 sm:h-14 sm:w-14 items-center justify-center rounded-full border border-white/25 bg-black/50 text-white backdrop-blur-md hover:border-[#ff784e] hover:bg-[#ff784e] transition"
+                  aria-label="Previous image"
+                >
+                  <ChevronLeft size={22} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveImage((p) => (p === gallery.length - 1 ? 0 : p + 1))}
+                  className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 flex h-11 w-11 sm:h-14 sm:w-14 items-center justify-center rounded-full border border-white/25 bg-black/50 text-white backdrop-blur-md hover:border-[#ff784e] hover:bg-[#ff784e] transition"
+                  aria-label="Next image"
+                >
+                  <ChevronRight size={22} />
+                </button>
+              </>
+            )}
           </div>
 
           {/* Bottom Thumbnails */}
-          <div className="flex items-center justify-center gap-2 z-20 overflow-x-auto py-2" onClick={(e) => e.stopPropagation()}>
-            {gallery.map((img, i) => (
-              <button
-                key={i}
-                type="button"
-                onClick={() => setActiveImage(i)}
-                className={`relative h-12 w-16 sm:h-14 sm:w-20 rounded-lg overflow-hidden shrink-0 transition-all ${
-                  i === activeImage ? "ring-2 ring-[#ff784e] scale-105" : "opacity-50 hover:opacity-100"
-                }`}
-              >
-                <Image src={img} alt="" fill className="object-cover" sizes="80px" unoptimized />
-              </button>
-            ))}
-          </div>
+          {gallery.length > 1 && (
+            <div className="flex items-center justify-center gap-2 z-20 overflow-x-auto py-2" onClick={(e) => e.stopPropagation()}>
+              {gallery.map((img, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => setActiveImage(i)}
+                  className={`relative h-12 w-16 sm:h-14 sm:w-20 rounded-lg overflow-hidden shrink-0 transition-all ${
+                    i === activeImage ? "ring-2 ring-[#ff784e] scale-105" : "opacity-50 hover:opacity-100"
+                  }`}
+                >
+                  <Image src={img} alt="" fill className="object-cover" sizes="80px" unoptimized />
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
       {/* HERO */}
       <section className="relative min-h-[50vh] sm:min-h-[65vh] flex items-end overflow-hidden pt-[86px] lg:min-h-[78vh]">
-        {/* Background photo */}
+        {/* Background photo or ambient gradient */}
         <div className="absolute inset-0">
-          <Image
-            key={activeImage}
-            src={gallery[activeImage] || room.image}
-            alt={room.name}
-            fill
-            priority
-            className="object-cover object-center transition-all duration-700 ease-out"
-            sizes="100vw"
-            unoptimized
-          />
+          {gallery.length > 0 ? (
+            <Image
+              key={activeImage}
+              src={gallery[activeImage] || room.image}
+              alt={room.name}
+              fill
+              priority
+              className="object-cover object-center transition-all duration-700 ease-out"
+              sizes="100vw"
+              unoptimized
+            />
+          ) : (
+            <div className="h-full w-full bg-gradient-to-br from-[#1c1c1c] via-[#121212] to-black" />
+          )}
         </div>
 
         {/* Clear, refined lighting overlay */}
@@ -224,33 +278,37 @@ function RoomDetailInner() {
         <div className="absolute inset-0 bg-gradient-to-r from-black/50 via-transparent to-transparent hidden sm:block" />
 
         {/* Fullscreen Button Top Right */}
-        <button
-          type="button"
-          onClick={() => setLightboxOpen(true)}
-          className="absolute right-3 top-24 z-20 flex items-center gap-1.5 rounded-full border border-white/25 bg-black/40 px-3 py-1.5 text-[9px] font-semibold tracking-wider text-white backdrop-blur-md transition-all hover:border-[#ff784e] hover:bg-[#ff784e] sm:right-8 sm:top-28 sm:px-4 sm:py-2 sm:text-[11px] sm:gap-2"
-        >
-          <Maximize2 size={11} className="sm:size-[13]" />
-          <span className="hidden sm:inline">View All ({gallery.length} Photos)</span>
-          <span className="sm:hidden">{gallery.length} Photos</span>
-        </button>
+        {gallery.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setLightboxOpen(true)}
+            className="absolute right-3 top-24 z-20 flex items-center gap-1.5 rounded-full border border-white/25 bg-black/40 px-3 py-1.5 text-[9px] font-semibold tracking-wider text-white backdrop-blur-md transition-all hover:border-[#ff784e] hover:bg-[#ff784e] sm:right-8 sm:top-28 sm:px-4 sm:py-2 sm:text-[11px] sm:gap-2"
+          >
+            <Maximize2 size={11} className="sm:size-[13]" />
+            <span className="hidden sm:inline">View All ({gallery.length} Photos)</span>
+            <span className="sm:hidden">{gallery.length} Photos</span>
+          </button>
+        )}
 
         {/* Floating Thumbnails on Hero bottom right */}
-        <div className="absolute right-6 bottom-8 z-20 hidden md:flex items-center gap-2.5 rounded-2xl border border-white/15 bg-black/60 p-2 backdrop-blur-xl shadow-2xl lg:right-10 lg:bottom-10">
-          {gallery.map((img, i) => (
-            <button
-              key={i}
-              type="button"
-              onClick={() => setActiveImage(i)}
-              className={`relative h-14 w-20 overflow-hidden rounded-xl transition-all duration-300 ${
-                i === activeImage
-                  ? "ring-2 ring-[#ff784e] scale-105 opacity-100"
-                  : "opacity-60 hover:opacity-100 hover:scale-102"
-              }`}
-            >
-              <Image src={img} alt="" fill className="object-cover" sizes="80px" unoptimized />
-            </button>
-          ))}
-        </div>
+        {gallery.length > 1 && (
+          <div className="absolute right-6 bottom-8 z-20 hidden md:flex items-center gap-2.5 rounded-2xl border border-white/15 bg-black/60 p-2 backdrop-blur-xl shadow-2xl lg:right-10 lg:bottom-10">
+            {gallery.map((img, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => setActiveImage(i)}
+                className={`relative h-14 w-20 overflow-hidden rounded-xl transition-all duration-300 ${
+                  i === activeImage
+                    ? "ring-2 ring-[#ff784e] scale-105 opacity-100"
+                    : "opacity-60 hover:opacity-100 hover:scale-102"
+                }`}
+              >
+                <Image src={img} alt="" fill className="object-cover" sizes="80px" unoptimized />
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Mobile Indicator Dots */}
         <div className="absolute bottom-4 left-1/2 z-20 -translate-x-1/2 flex gap-1.5 md:hidden">
@@ -302,7 +360,7 @@ function RoomDetailInner() {
                 </div>
               </div>
               <div className="flex items-center gap-2 sm:gap-3">
-                <a href="tel:+8801401777888"
+                <a href={`tel:${contactPhone.replace(/\s+/g, "")}`}
                   className="inline-flex items-center gap-1.5 sm:gap-2 border border-white/30 bg-black/20 backdrop-blur-sm px-3 sm:px-5 py-2 sm:py-2.5 text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.12em] text-white hover:border-[#ff784e] hover:text-[#ff784e] transition-all rounded-lg">
                   <Phone size={11} className="sm:size-[13]" /> Call to Book
                 </a>
@@ -536,9 +594,9 @@ function RoomDetailInner() {
                   Check Availability <ArrowUpRight size={14} className="transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
                 </Link>
 
-                <a href="tel:+8801401777888"
+                <a href={`tel:${contactPhone.replace(/\s+/g, "")}`}
                   className="mt-3 flex w-full items-center justify-center gap-2 border border-black/10 py-3.5 text-[11px] font-bold uppercase tracking-[0.1em] text-black/60 hover:border-[#ff784e] hover:text-[#ff784e] transition-all rounded-lg sm:py-4">
-                  <Phone size={13} /> Call +880 1401 777 888
+                  <Phone size={13} /> Call {contactPhone}
                 </a>
 
                 <p className="mt-3 text-center text-[10px] text-black/30 sm:mt-4">Free cancellation up to 24 hours before check-in</p>
@@ -593,52 +651,54 @@ function RoomDetailInner() {
       )}
 
       {/* OTHER ROOMS */}
-      <section className="py-14 lg:py-20 bg-[#fafafa]">
-        <div className="max-w-[1500px] mx-auto px-6 lg:px-10">
-          <div className="text-center mb-10">
-            <div className="flex items-center justify-center gap-3 mb-4">
-              <span className="h-px w-8 bg-[#ff784e]/40" />
-              <span className="text-[#ff784e] text-[10px] font-bold uppercase tracking-[0.3em]">You May Also Like</span>
-              <span className="h-px w-8 bg-[#ff784e]/40" />
+      {otherRooms.length > 0 && (
+        <section className="py-14 lg:py-20 bg-[#fafafa]">
+          <div className="max-w-[1500px] mx-auto px-6 lg:px-10">
+            <div className="text-center mb-10">
+              <div className="flex items-center justify-center gap-3 mb-4">
+                <span className="h-px w-8 bg-[#ff784e]/40" />
+                <span className="text-[#ff784e] text-[10px] font-bold uppercase tracking-[0.3em]">You May Also Like</span>
+                <span className="h-px w-8 bg-[#ff784e]/40" />
+              </div>
+              <h2 className="text-2xl sm:text-3xl font-serif font-light text-[#1a1a1a]">Explore Other Rooms</h2>
             </div>
-            <h2 className="text-2xl sm:text-3xl font-serif font-light text-[#1a1a1a]">Explore Other Rooms</h2>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {otherRooms.map((r) => (
-              <Link key={r.slug} href={`/rooms/${r.slug}`}
-                className="group block overflow-hidden rounded-xl border border-black/[0.04] bg-white shadow-sm hover:shadow-lg transition-all duration-500">
-                <div className="relative h-[200px] overflow-hidden">
-                  <Image src={r.image} alt={r.name} fill className="object-cover transition-transform duration-700 group-hover:scale-105" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" unoptimized />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
-                  {r.tag && (
-                    <span className="absolute top-3 left-3 px-2.5 py-1 text-[8px] font-bold uppercase tracking-wider bg-[#ff784e] text-white rounded-sm">{r.tag}</span>
-                  )}
-                  <div className="absolute bottom-3 left-3">
-                    <div className="flex items-center gap-1">
-                      {Array.from({ length: r.stars }).map((_, i) => (
-                        <Star key={i} size={10} className="fill-[#ff784e] text-[#ff784e]" />
-                      ))}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {otherRooms.map((r) => (
+                <Link key={r.slug} href={`/rooms/${r.slug}`}
+                  className="group block overflow-hidden rounded-xl border border-black/[0.04] bg-white shadow-sm hover:shadow-lg transition-all duration-500">
+                  <div className="relative h-[200px] overflow-hidden">
+                    <Image src={r.image} alt={r.name} fill className="object-cover transition-transform duration-700 group-hover:scale-105" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" unoptimized />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+                    {r.tag && (
+                      <span className="absolute top-3 left-3 px-2.5 py-1 text-[8px] font-bold uppercase tracking-wider bg-[#ff784e] text-white rounded-sm">{r.tag}</span>
+                    )}
+                    <div className="absolute bottom-3 left-3">
+                      <div className="flex items-center gap-1">
+                        {Array.from({ length: r.stars }).map((_, i) => (
+                          <Star key={i} size={10} className="fill-[#ff784e] text-[#ff784e]" />
+                        ))}
+                      </div>
                     </div>
                   </div>
-                </div>
-                <div className="p-5">
-                  <h3 className="text-lg font-serif font-light text-[#1a1a1a] group-hover:text-[#ff784e] transition-colors">{r.name}</h3>
-                  <p className="mt-1 text-[11px] text-black/40">{r.bed} · {r.size} · {r.maxGuests}</p>
-                  <div className="mt-3 flex items-center justify-between">
-                    <span className="text-xl font-serif font-light text-[#1a1a1a]">&#x09F3;{r.price}<span className="text-[10px] text-black/30">/night</span></span>
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#ff784e] flex items-center gap-1">View <ChevronRight size={12} /></span>
+                  <div className="p-5">
+                    <h3 className="text-lg font-serif font-light text-[#1a1a1a] group-hover:text-[#ff784e] transition-colors">{r.name}</h3>
+                    <p className="mt-1 text-[11px] text-black/40">{r.bed} · {r.size} · {r.maxGuests}</p>
+                    <div className="mt-3 flex items-center justify-between">
+                      <span className="text-xl font-serif font-light text-[#1a1a1a]">&#x09F3;{r.price}<span className="text-[10px] text-black/30">/night</span></span>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-[#ff784e] flex items-center gap-1">View <ChevronRight size={12} /></span>
+                    </div>
                   </div>
-                </div>
+                </Link>
+              ))}
+            </div>
+            <div className="mt-10 text-center">
+              <Link href="/rooms" className="inline-flex items-center gap-2 border border-black/10 px-7 py-3.5 text-[10px] font-bold uppercase tracking-[0.12em] text-black/60 hover:border-[#ff784e] hover:text-[#ff784e] transition-all rounded-lg">
+                View All Rooms <ArrowRight size={14} />
               </Link>
-            ))}
+            </div>
           </div>
-          <div className="mt-10 text-center">
-            <Link href="/rooms" className="inline-flex items-center gap-2 border border-black/10 px-7 py-3.5 text-[10px] font-bold uppercase tracking-[0.12em] text-black/60 hover:border-[#ff784e] hover:text-[#ff784e] transition-all rounded-lg">
-              View All Rooms <ArrowRight size={14} />
-            </Link>
-          </div>
-        </div>
-      </section>
+        </section>
+      )}
 
     </main>
   );

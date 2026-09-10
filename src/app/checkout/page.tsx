@@ -18,7 +18,6 @@ import {
   User,
   MessageSquare,
 } from "lucide-react";
-import { roomsData } from "@/lib/roomsData";
 import { getRoomTypeBySlug, RoomType, submitBooking } from "@/lib/api";
 
 function nightsBetween(a: string, b: string): number {
@@ -54,19 +53,33 @@ function CheckoutContent() {
   const adultsParam = searchParams.get("adults") || "2";
   const childrenParam = searchParams.get("children") || "0";
 
-  const [room, setRoom] = useState<RoomType>(() => {
-    return (roomsData.find((r) => r.slug === roomSlug) || roomsData[0]) as unknown as RoomType;
-  });
+  const [room, setRoom] = useState<RoomType | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    let isMounted = true;
     if (roomSlug) {
-      getRoomTypeBySlug(roomSlug).then((data) => {
-        if (data) setRoom(data);
-      });
+      setIsLoading(true);
+      getRoomTypeBySlug(roomSlug)
+        .then((data) => {
+          if (isMounted) setRoom(data);
+        })
+        .catch((err) => {
+          console.warn("Failed to load room for checkout:", err);
+        })
+        .finally(() => {
+          if (isMounted) setIsLoading(false);
+        });
+    } else {
+      setIsLoading(false);
     }
+    return () => {
+      isMounted = false;
+    };
   }, [roomSlug]);
 
   const priceNum = useMemo(() => {
+    if (!room) return 0;
     if (room.base_price_per_night) {
       return Number(room.base_price_per_night);
     }
@@ -181,15 +194,28 @@ function CheckoutContent() {
     }
   };
 
-  if (!roomSlug) {
+  if (isLoading) {
     return (
       <main className="bg-white min-h-screen pt-[86px] flex items-center justify-center">
         <div className="text-center px-6">
-          <h1 className="text-3xl font-serif font-light text-[#1a1a1a]">No Room Selected</h1>
-          <p className="mt-3 text-black/50 text-[14px]">Please select a room first to continue booking.</p>
-          <Link href="/rooms" className="mt-6 inline-flex items-center gap-2 bg-[#ff784e] px-8 py-4 text-[11px] font-bold uppercase tracking-[0.12em] text-white hover:bg-[#1a1a1a] transition-all rounded-lg">
-            Browse Rooms <ArrowUpRight size={14} />
-          </Link>
+          <div className="h-9 w-9 border-2 border-[#ff784e] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-sm font-medium text-black/50">Loading reservation...</p>
+        </div>
+      </main>
+    );
+  }
+
+  if (!roomSlug || !room) {
+    return (
+      <main className="bg-white min-h-screen pt-[86px] flex items-center justify-center">
+        <div className="text-center px-6 max-w-md mx-auto">
+          <h1 className="text-2xl sm:text-3xl font-serif font-light text-[#1a1a1a]">Room Unavailable</h1>
+          <p className="mt-3 text-black/50 text-[14px] leading-relaxed">The room you selected is currently unavailable or has not been selected.</p>
+          <div className="mt-6 flex items-center justify-center gap-3">
+            <Link href="/rooms" className="inline-flex items-center gap-2 bg-[#ff784e] px-7 py-3.5 text-[11px] font-bold uppercase tracking-[0.12em] text-white hover:bg-[#1a1a1a] transition-all rounded-lg">
+              Browse Rooms <ArrowUpRight size={14} />
+            </Link>
+          </div>
         </div>
       </main>
     );

@@ -31,83 +31,30 @@ const iconMap: Record<string, React.ComponentType<{ size?: number; strokeWidth?:
   ShieldCheck,
 };
 
-const DEFAULT_FACILITIES: FacilityItem[] = [
-  {
-    id: 1,
-    subtitle: "Relax & Refresh",
-    title: "Infinity Pool",
-    description:
-      "Take a refreshing break and unwind beside our beautifully designed infinity pool. With stunning views and a serene atmosphere, it's the perfect place to soak up the sun and let your worries drift away.",
-    image: "/images/facilities/pool.webp",
-    icon: "Waves",
-    features: ["Heated Pool", "Poolside Bar", "Sun Loungers", "Towel Service"],
-  },
-  {
-    id: 2,
-    subtitle: "Taste & Discover",
-    title: "Fine Dining",
-    description:
-      "Enjoy carefully crafted dishes prepared with the freshest local ingredients. Our signature restaurant offers an international menu featuring everything from traditional delicacies to global cuisines.",
-    image: "/images/facilities/dining.avif",
-    icon: "Utensils",
-    features: ["International Menu", "Private Dining", "Wine Collection", "Ocean View"],
-  },
-  {
-    id: 3,
-    subtitle: "Relax & Rejuvenate",
-    title: "Spa & Wellness",
-    description:
-      "Restore your body and mind with our world-class wellness experience. Our authentic spa offers the perfect retreat — be it to heal, pamper, rejuvenate or revitalize, rest assured your desires will be met.",
-    image: "/images/facilities/spa.avif",
-    icon: "Sparkles",
-    features: ["Couples Treatment", "Steam Room", "Sauna", "Hot Tub"],
-  },
-  {
-    id: 4,
-    subtitle: "Move & Energize",
-    title: "Fitness Center",
-    description:
-      "Stay active with state-of-the-art equipment available throughout your stay. Our modern fitness center features everything you need to maintain your workout routine while enjoying your vacation.",
-    image: "/images/facilities/gym.webp",
-    icon: "Dumbbell",
-    features: ["Modern Equipment", "Personal Trainers", "Yoga Studio", "24/7 Access"],
-  },
-  {
-    id: 5,
-    subtitle: "Easy & Convenient",
-    title: "Private Parking",
-    description:
-      "Secure and convenient parking for a worry-free arrival. Our private parking area is monitored 24/7 to ensure your vehicle stays safe throughout your stay at The Azura.",
-    image: "/images/facilities/parking.jpg",
-    icon: "Car",
-    features: ["24/7 Security", "CCTV Monitored", "Covered Parking", "Valet Service"],
-  },
-  {
-    id: 6,
-    subtitle: "Always Connected",
-    title: "High-Speed Wi-Fi",
-    description:
-      "Stay connected with reliable high-speed Wi-Fi throughout the hotel. Whether for business or leisure, enjoy seamless internet access in every corner of The Azura.",
-    image: "/images/facilities/wifi.avif",
-    icon: "Wifi",
-    features: ["Fiber Optic", "Room Service", "Business Center", "No Data Limits"],
-  },
-];
-
 export default function FacilitiesPage() {
   const pageRef = useRef<HTMLDivElement>(null);
-  const [facilities, setFacilities] = useState<FacilityItem[]>(DEFAULT_FACILITIES);
+  const [facilities, setFacilities] = useState<FacilityItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    let isMounted = true;
     getFacilities()
       .then((data) => {
-        if (data && data.length > 0) {
-          setFacilities(data);
+        if (isMounted) {
+          setFacilities(data || []);
         }
       })
       .catch((err) => {
         console.warn("Failed to load facilities:", err);
+      })
+      .finally(() => {
+        if (isMounted) {
+          setIsLoading(false);
+        }
       });
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -155,10 +102,14 @@ export default function FacilitiesPage() {
           HERO
       ===================================================== */}
       <section className="relative min-h-[55vh] sm:min-h-[60vh] flex items-end overflow-hidden pt-[86px]">
-        <div
-          className="absolute inset-0 bg-cover bg-center"
-          style={{ backgroundImage: "url('/images/facilities/pool.webp')" }}
-        />
+        {facilities[0]?.image ? (
+          <div
+            className="absolute inset-0 bg-cover bg-center"
+            style={{ backgroundImage: `url('${facilities[0].image}')` }}
+          />
+        ) : (
+          <div className="absolute inset-0 bg-gradient-to-br from-[#1c1c1c] via-[#121212] to-black" />
+        )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-black/20" />
 
         <div className="relative z-10 w-full max-w-[1500px] mx-auto px-6 lg:px-10 pb-16 sm:pb-20 lg:pb-24">
@@ -194,31 +145,26 @@ export default function FacilitiesPage() {
         </div>
       </section>
 
-
       {/* =====================================================
           MARQUEE STRIP
       ===================================================== */}
-      <section className="bg-[#ff784e] py-3 overflow-hidden">
-        <div className="marquee-track flex whitespace-nowrap gap-8">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <span key={i} className="flex items-center gap-4 text-white text-xs font-bold uppercase tracking-[0.2em]">
-              <span className="h-1.5 w-1.5 rounded-full bg-white/50" />
-              Infinity Pool
-              <span className="h-1.5 w-1.5 rounded-full bg-white/50" />
-              Fine Dining
-              <span className="h-1.5 w-1.5 rounded-full bg-white/50" />
-              Spa & Wellness
-              <span className="h-1.5 w-1.5 rounded-full bg-white/50" />
-              Fitness Center
-              <span className="h-1.5 w-1.5 rounded-full bg-white/50" />
-              Private Parking
-              <span className="h-1.5 w-1.5 rounded-full bg-white/50" />
-              High-Speed Wi-Fi
-              <span className="h-1.5 w-1.5 rounded-full bg-white/50" />
-            </span>
-          ))}
-        </div>
-      </section>
+      {facilities.length > 0 && (
+        <section className="bg-[#ff784e] py-3 overflow-hidden">
+          <div className="marquee-track flex whitespace-nowrap gap-8">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <span key={i} className="flex items-center gap-4 text-white text-xs font-bold uppercase tracking-[0.2em]">
+                {facilities.map((f) => (
+                  <span key={f.id} className="flex items-center gap-4">
+                    <span className="h-1.5 w-1.5 rounded-full bg-white/50" />
+                    {f.title}
+                  </span>
+                ))}
+                <span className="h-1.5 w-1.5 rounded-full bg-white/50" />
+              </span>
+            ))}
+          </div>
+        </section>
+      )}
 
 
       {/* =====================================================
@@ -236,60 +182,90 @@ export default function FacilitiesPage() {
             <div className="mt-4 mx-auto h-px w-16 bg-[#ff784e]/40" />
           </div>
 
-          <div className="fac-grid grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {facilities.map((item) => {
-              const Icon = iconMap[item.icon] || Sparkles;
-              return (
-                <div
-                  key={item.title}
-                  className="fac-card group relative overflow-hidden bg-[#f7f4ef] cursor-pointer"
-                >
-                  {/* Image */}
-                  <div className="relative h-[260px] overflow-hidden">
-                    <img
-                      src={item.image}
-                      alt={item.title}
-                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
-
-                    {/* Icon badge */}
-                    <div className="absolute top-4 right-4 flex h-10 w-10 items-center justify-center bg-[#ff784e] text-white">
-                      <Icon size={18} />
-                    </div>
-
-                  </div>
-
-                  {/* Content */}
-                  <div className="p-6 lg:p-8">
-                    <span className="text-[#ff784e] text-[10px] font-bold uppercase tracking-[0.25em]">
-                      {item.subtitle}
-                    </span>
-
-                    <h3 className="mt-2 text-xl sm:text-2xl font-serif font-light text-[#1a1a1a]">
-                      {item.title}
-                    </h3>
-
-                    <p className="mt-3 text-black/50 text-[13px] leading-6 line-clamp-2">
-                      {item.description}
-                    </p>
-
-                    {/* Features list */}
-                    <div className="mt-4 flex flex-wrap gap-2">
-                      {item.features.map((f) => (
-                        <span
-                          key={f}
-                          className="px-3 py-1 text-[10px] font-medium uppercase tracking-wider text-[#ff784e] bg-[#ff784e]/8 border border-[#ff784e]/15"
-                        >
-                          {f}
-                        </span>
-                      ))}
-                    </div>
+          {isLoading ? (
+            <div className="fac-grid grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <div key={i} className="bg-[#f7f4ef] rounded-xl overflow-hidden animate-pulse">
+                  <div className="h-[260px] bg-black/10" />
+                  <div className="p-6 space-y-3">
+                    <div className="h-4 w-1/3 bg-black/10 rounded" />
+                    <div className="h-6 w-2/3 bg-black/10 rounded" />
+                    <div className="h-12 bg-black/5 rounded" />
                   </div>
                 </div>
-              );
-            })}
-          </div>
+              ))}
+            </div>
+          ) : facilities.length === 0 ? (
+            <div className="mx-auto max-w-xl text-center py-16 px-6 rounded-2xl border border-black/[0.06] bg-[#f7f4ef]">
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#ff784e]/10 text-[#ff784e] mb-4">
+                <Sparkles size={28} />
+              </div>
+              <h3 className="text-xl sm:text-2xl font-serif font-light text-[#1a1a1a]">Facilities Updating</h3>
+              <p className="mt-3 text-sm text-black/50 leading-relaxed max-w-md mx-auto">
+                We are currently updating our list of hotel facilities, services, and luxury experiences. Please contact our reception desk for direct inquiries.
+              </p>
+              <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+                <a href="tel:+8801401777888" className="inline-flex items-center gap-2 bg-[#ff784e] text-white px-6 py-3 text-[11px] font-bold uppercase tracking-[0.12em] hover:bg-[#1a1a1a] transition-all rounded-lg">
+                  Call +880 1401 777 888
+                </a>
+              </div>
+            </div>
+          ) : (
+            <div className="fac-grid grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {facilities.map((item) => {
+                const Icon = iconMap[item.icon] || Sparkles;
+                return (
+                  <div
+                    key={item.title}
+                    className="fac-card group relative overflow-hidden bg-[#f7f4ef] cursor-pointer"
+                  >
+                    {/* Image */}
+                    <div className="relative h-[260px] overflow-hidden">
+                      <img
+                        src={item.image}
+                        alt={item.title}
+                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
+
+                      {/* Icon badge */}
+                      <div className="absolute top-4 right-4 flex h-10 w-10 items-center justify-center bg-[#ff784e] text-white">
+                        <Icon size={18} />
+                      </div>
+
+                    </div>
+
+                    {/* Content */}
+                    <div className="p-6 lg:p-8">
+                      <span className="text-[#ff784e] text-[10px] font-bold uppercase tracking-[0.25em]">
+                        {item.subtitle}
+                      </span>
+
+                      <h3 className="mt-2 text-xl sm:text-2xl font-serif font-light text-[#1a1a1a]">
+                        {item.title}
+                      </h3>
+
+                      <p className="mt-3 text-black/50 text-[13px] leading-6 line-clamp-2">
+                        {item.description}
+                      </p>
+
+                      {/* Features list */}
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        {item.features.map((f) => (
+                          <span
+                            key={f}
+                            className="px-3 py-1 text-[10px] font-medium uppercase tracking-wider text-[#ff784e] bg-[#ff784e]/8 border border-[#ff784e]/15"
+                          >
+                            {f}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </section>
 
@@ -297,7 +273,7 @@ export default function FacilitiesPage() {
       {/* =====================================================
           DETAILED SECTIONS — Alternating
       ===================================================== */}
-      {facilities.slice(0, 3).map((item, i) => {
+      {facilities.length > 0 && facilities.slice(0, 3).map((item, i) => {
         const isReversed = i % 2 !== 0;
         const Icon = iconMap[item.icon] || Sparkles;
         return (

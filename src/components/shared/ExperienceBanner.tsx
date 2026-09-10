@@ -5,7 +5,7 @@ import Link from "next/link";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { ArrowUpRight } from "lucide-react";
-import { getSettings, HotelSettings } from "@/lib/api";
+import { getSettings, HotelSettings, formatImageUrl } from "@/lib/api";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -22,7 +22,7 @@ export default function ExperienceBanner() {
   const label = settings?.experience_label || "The Azura Experience";
   const title = settings?.experience_title || "Where every stay becomes a memory.";
   const subtitle = settings?.experience_subtitle;
-  const image = settings?.experience_image || "/images/room2.avif";
+  const image = settings?.experience_image ? formatImageUrl(settings.experience_image) : "";
   const videoUrl = settings?.experience_video_url;
   const buttonText = settings?.experience_button_text || "Explore Suites";
   const buttonLink = settings?.experience_button_link || "/rooms";
@@ -112,15 +112,14 @@ export default function ExperienceBanner() {
           >
             <source src={videoUrl} type="video/mp4" />
           </video>
-        ) : (
+        ) : image ? (
           <img
             src={image}
             alt={title}
             className="experience-bg absolute inset-0 h-full w-full object-cover"
-            onError={(e) => {
-              (e.target as HTMLImageElement).src = "/images/room2.avif";
-            }}
           />
+        ) : (
+          <div className="experience-bg absolute inset-0 h-full w-full bg-gradient-to-b from-[#181818] via-[#101010] to-black" />
         )}
 
         {/* Dark Overlay */}

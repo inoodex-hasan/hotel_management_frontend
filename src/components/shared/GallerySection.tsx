@@ -13,18 +13,9 @@ import { getGalleryItems, GalleryItem } from "@/lib/api";
 
 gsap.registerPlugin(ScrollTrigger);
 
-const fallbackGallery: GalleryItem[] = [
-  { id: 1, title: "Grand Lobby", category: "Interior", image: "/images/room1.avif" },
-  { id: 2, title: "Infinity Pool", category: "Experience", image: "/images/room2.avif" },
-  { id: 3, title: "Luxury Suite", category: "Rooms", image: "/images/room3.avif" },
-  { id: 4, title: "Signature Dining", category: "Dining", image: "/images/dining/restaurant.avif" },
-  { id: 5, title: "Wellness & Spa", category: "Wellness", image: "/images/rooms/room-1.avif" },
-  { id: 6, title: "Evening Lounge", category: "Lifestyle", image: "/images/rooms/room-2.avif" },
-];
-
 export default function GallerySection() {
   const sectionRef = useRef<HTMLElement>(null);
-  const [items, setItems] = useState<GalleryItem[]>(fallbackGallery);
+  const [items, setItems] = useState<GalleryItem[]>([]);
   const [activeCategory, setActiveCategory] = useState<string>("All");
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -35,8 +26,8 @@ export default function GallerySection() {
     async function loadGallery() {
       try {
         const data = await getGalleryItems();
-        if (isMounted && data && data.length > 0) {
-          setItems(data);
+        if (isMounted) {
+          setItems(data || []);
         }
       } catch (err) {
         console.warn("Failed to load dynamic gallery items:", err);
@@ -49,6 +40,10 @@ export default function GallerySection() {
       isMounted = false;
     };
   }, []);
+
+  if (!isLoading && items.length === 0) {
+    return null;
+  }
 
   // Compute unique categories
   const categories = useMemo(() => {
@@ -208,9 +203,6 @@ export default function GallerySection() {
                   src={item.image}
                   alt={item.title}
                   className="absolute inset-0 h-full w-full object-cover transition-transform duration-[800ms] ease-out group-hover:scale-105"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).src = "/images/room1.avif";
-                  }}
                 />
 
                 {/* Hover overlay */}
@@ -286,9 +278,6 @@ export default function GallerySection() {
               src={filteredItems[activeIndex].image}
               alt={filteredItems[activeIndex].title}
               className="max-h-[70vh] w-auto max-w-full rounded-xl object-contain shadow-2xl sm:max-h-[78vh]"
-              onError={(e) => {
-                (e.target as HTMLImageElement).src = "/images/room1.avif";
-              }}
             />
             <div className="mt-3 flex items-center justify-between gap-4 text-white sm:mt-5">
               <div>

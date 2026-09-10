@@ -23,39 +23,6 @@ interface NavRoomItem {
   }[];
 }
 
-const DEFAULT_ROOMS: NavRoomItem[] = [
-  {
-    name: "Premier Room",
-    href: "/rooms/premier-room",
-    image: "/images/room1.avif",
-  },
-  {
-    name: "Superior Deluxe Room",
-    href: "/rooms/superior-deluxe-room",
-    image: "/images/room2.avif",
-  },
-  {
-    name: "Executive Room",
-    href: "/rooms/executive-room",
-    image: "/images/room3.avif",
-  },
-  {
-    name: "Presidential Suite",
-    href: "/rooms/presidential-suite",
-    image: "/images/rooms/room-1.avif",
-  },
-  {
-    name: "Premier Suite",
-    href: "/rooms/premier-suite",
-    image: "/images/rooms/room-2.avif",
-  },
-  {
-    name: "Honeymoon Suite",
-    href: "/rooms/honeymoon-suite",
-    image: "/images/rooms/room-3.avif",
-  },
-];
-
 const navItems = [
   { name: "Home", href: "/" },
   { name: "About", href: "/about" },
@@ -65,16 +32,17 @@ const navItems = [
 ];
 
 export default function Navbar() {
-  const [rooms, setRooms] = useState<NavRoomItem[]>(DEFAULT_ROOMS);
+  const [rooms, setRooms] = useState<NavRoomItem[]>([]);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [mobileRoomsOpen, setMobileRoomsOpen] = useState(false);
   const [mobileSubmenu, setMobileSubmenu] = useState<string | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
 
   useEffect(() => {
+    let isMounted = true;
     getRoomTypes()
       .then((data: RoomType[]) => {
-        if (data && data.length > 0) {
+        if (isMounted && data && data.length > 0) {
           setRooms(
             data.map((r) => ({
               name: r.name,
@@ -87,6 +55,9 @@ export default function Navbar() {
       .catch((err) => {
         console.warn("Failed to fetch room types for Navbar:", err);
       });
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const closeMobileMenu = () => {
@@ -123,42 +94,50 @@ export default function Navbar() {
                 Home
                 <span className="absolute bottom-0 left-1/2 h-[2px] w-0 -translate-x-1/2 bg-[#ff784e] transition-all duration-300 group-hover:w-5" />
               </Link>
-               <div className="group relative h-full flex items-center gap-0.5 px-3 xl:px-4 cursor-pointer">
+              
+              {rooms.length > 0 ? (
+                <div className="group relative h-full flex items-center gap-0.5 px-3 xl:px-4 cursor-pointer">
                   <span className="text-[11px] xl:text-[13px] font-semibold uppercase tracking-[0.06em] text-black transition-colors duration-300 group-hover:text-[#ff784e] whitespace-nowrap">
                     Rooms & Suites
                   </span>
-                <ChevronDown size={13} strokeWidth={1.8} className="text-black/50 transition-transform duration-300 group-hover:rotate-180 group-hover:text-[#ff784e]" />
-                {/* Invisible bridge between trigger and dropdown */}
-                <div className="absolute left-0 top-full h-2 w-full" />
-                <div className="pointer-events-none invisible absolute left-0 top-full z-50 w-[240px] translate-y-0 bg-black opacity-0 shadow-[0_8px_30px_rgba(0,0,0,0.5)] transition-all duration-300 group-hover:pointer-events-auto group-hover:visible group-hover:opacity-100">
-                  <div className="h-[3px] bg-[#ff784e]" />
-                  {rooms.map((room) => (
-                    <div key={room.name} className="group/room relative">
-                      {room.children ? (
-                        <>
-                          <Link href={room.href} className="flex items-center justify-between border-b border-white/[0.07] px-5 py-3 text-[11px] font-medium text-white transition-all duration-200 hover:bg-[#ff784e]">
-                            <span>{room.name}</span>
-                            <ChevronRight size={13} strokeWidth={1.7} className="text-white/50 transition-all duration-200 group-hover/room:translate-x-1 group-hover/room:text-white" />
+                  <ChevronDown size={13} strokeWidth={1.8} className="text-black/50 transition-transform duration-300 group-hover:rotate-180 group-hover:text-[#ff784e]" />
+                  {/* Invisible bridge between trigger and dropdown */}
+                  <div className="absolute left-0 top-full h-2 w-full" />
+                  <div className="pointer-events-none invisible absolute left-0 top-full z-50 w-[240px] translate-y-0 bg-black opacity-0 shadow-[0_8px_30px_rgba(0,0,0,0.5)] transition-all duration-300 group-hover:pointer-events-auto group-hover:visible group-hover:opacity-100">
+                    <div className="h-[3px] bg-[#ff784e]" />
+                    {rooms.map((room) => (
+                      <div key={room.name} className="group/room relative">
+                        {room.children ? (
+                          <>
+                            <Link href={room.href} className="flex items-center justify-between border-b border-white/[0.07] px-5 py-3 text-[11px] font-medium text-white transition-all duration-200 hover:bg-[#ff784e]">
+                              <span>{room.name}</span>
+                              <ChevronRight size={13} strokeWidth={1.7} className="text-white/50 transition-all duration-200 group-hover/room:translate-x-1 group-hover/room:text-white" />
+                            </Link>
+                            <div className="pointer-events-none invisible absolute left-full top-0 z-50 w-[230px] bg-black opacity-0 shadow-[0_8px_30px_rgba(0,0,0,0.5)] transition-all duration-300 group-hover/room:pointer-events-auto group-hover/room:visible group-hover/room:opacity-100">
+                              <div className="h-[3px] bg-[#ff784e]" />
+                              {room.children.map((child) => (
+                                <Link key={child.name} href={child.href} className="block border-b border-white/[0.07] px-5 py-3 text-[11px] font-medium text-white transition-colors duration-200 hover:bg-[#ff784e]">
+                                  {child.name}
+                                </Link>
+                              ))}
+                            </div>
+                          </>
+                        ) : (
+                          <Link href={room.href} className="block border-b border-white/[0.07] px-5 py-3 text-[11px] font-medium text-white transition-colors duration-200 hover:bg-[#ff784e]">
+                            {room.name}
                           </Link>
-                          <div className="pointer-events-none invisible absolute left-full top-0 z-50 w-[230px] bg-black opacity-0 shadow-[0_8px_30px_rgba(0,0,0,0.5)] transition-all duration-300 group-hover/room:pointer-events-auto group-hover/room:visible group-hover/room:opacity-100">
-                            <div className="h-[3px] bg-[#ff784e]" />
-                            {room.children.map((child) => (
-                              <Link key={child.name} href={child.href} className="block border-b border-white/[0.07] px-5 py-3 text-[11px] font-medium text-white transition-colors duration-200 hover:bg-[#ff784e]">
-                                {child.name}
-                              </Link>
-                            ))}
-                          </div>
-                        </>
-                      ) : (
-                        <Link href={room.href} className="block border-b border-white/[0.07] px-5 py-3 text-[11px] font-medium text-white transition-colors duration-200 hover:bg-[#ff784e]">
-                          {room.name}
-                        </Link>
-                      )}
-                    </div>
-                  ))}
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  <span className="absolute bottom-0 left-1/2 h-[2px] w-0 -translate-x-1/2 bg-[#ff784e] transition-all duration-300 group-hover:w-5" />
                 </div>
-                <span className="absolute bottom-0 left-1/2 h-[2px] w-0 -translate-x-1/2 bg-[#ff784e] transition-all duration-300 group-hover:w-5" />
-              </div>
+              ) : (
+                <Link href="/rooms" className="group relative flex h-full items-center px-3 xl:px-4 text-[11px] xl:text-[13px] font-semibold uppercase tracking-[0.06em] text-black transition-colors duration-300 hover:text-[#ff784e]">
+                  Rooms & Suites
+                  <span className="absolute bottom-0 left-1/2 h-[2px] w-0 -translate-x-1/2 bg-[#ff784e] transition-all duration-300 group-hover:w-5" />
+                </Link>
+              )}
 
               {navItems.filter((item) => item.name !== "Home").map((item) => (
                 <Link key={item.name} href={item.href} className="group relative flex h-full items-center px-3 xl:px-4 text-[11px] xl:text-[13px] font-semibold uppercase tracking-[0.06em] text-black transition-colors duration-300 hover:text-[#ff784e]">
@@ -207,40 +186,46 @@ export default function Navbar() {
             </Link>
 
             {/* MOBILE ROOMS */}
-            <div className="border-b border-black/[0.07]">
-              <button type="button" onClick={() => setMobileRoomsOpen(!mobileRoomsOpen)} className="flex w-full items-center justify-between px-2 py-3 sm:py-4">
-                <span className="text-[12px] font-semibold uppercase tracking-wide text-black sm:text-[13px]">Rooms & Suites</span>
-                <ChevronDown size={16} className={`text-black transition-transform duration-300 ${mobileRoomsOpen ? "rotate-180 text-[#ff784e]" : ""}`} />
-              </button>
+            {rooms.length > 0 ? (
+              <div className="border-b border-black/[0.07]">
+                <button type="button" onClick={() => setMobileRoomsOpen(!mobileRoomsOpen)} className="flex w-full items-center justify-between px-2 py-3 sm:py-4">
+                  <span className="text-[12px] font-semibold uppercase tracking-wide text-black sm:text-[13px]">Rooms & Suites</span>
+                  <ChevronDown size={16} className={`text-black transition-transform duration-300 ${mobileRoomsOpen ? "rotate-180 text-[#ff784e]" : ""}`} />
+                </button>
 
-              <div className={`overflow-hidden transition-all duration-500 ${mobileRoomsOpen ? "max-h-[800px] pb-3" : "max-h-0"}`}>
-                <div className="flex flex-col px-1 pt-1">
-                  {rooms.map((room) => (
-                    <div key={room.name}>
-                      <Link href={room.href} onClick={closeMobileMenu} className="flex items-center justify-between border-b border-black/[0.05] px-2 py-2.5 text-[11px] font-medium text-black/70 transition-colors hover:text-[#ff784e]">
-                        <span>{room.name}</span>
-                        <ChevronRight size={13} className="text-black/30" />
-                      </Link>
-                      {room.children && (
-                        <div className={`ml-4 overflow-hidden transition-all duration-300 ${mobileSubmenu === room.name ? "max-h-40 opacity-100 pb-1" : "max-h-0 opacity-0"}`}>
-                          <button type="button" onClick={() => setMobileSubmenu(mobileSubmenu === room.name ? null : room.name)} className="flex w-full items-center justify-between px-1 py-1 text-[10px] text-black/40 transition-colors hover:text-[#ff784e]">
-                            <span>View All</span>
-                            <ChevronDown size={12} className={`transition-transform duration-300 ${mobileSubmenu === room.name ? "rotate-180 text-[#ff784e]" : ""}`} />
-                          </button>
-                          <div className="ml-1 border-l-2 border-[#ff784e] pl-2">
-                            {room.children.map((child) => (
-                              <Link key={child.name} href={child.href} onClick={closeMobileMenu} className="block py-1 text-[10px] text-black/50 transition-colors hover:text-[#ff784e]">
-                                {child.name}
-                              </Link>
-                            ))}
+                <div className={`overflow-hidden transition-all duration-500 ${mobileRoomsOpen ? "max-h-[800px] pb-3" : "max-h-0"}`}>
+                  <div className="flex flex-col px-1 pt-1">
+                    {rooms.map((room) => (
+                      <div key={room.name}>
+                        <Link href={room.href} onClick={closeMobileMenu} className="flex items-center justify-between border-b border-black/[0.05] px-2 py-2.5 text-[11px] font-medium text-black/70 transition-colors hover:text-[#ff784e]">
+                          <span>{room.name}</span>
+                          <ChevronRight size={13} className="text-black/30" />
+                        </Link>
+                        {room.children && (
+                          <div className={`ml-4 overflow-hidden transition-all duration-300 ${mobileSubmenu === room.name ? "max-h-40 opacity-100 pb-1" : "max-h-0 opacity-0"}`}>
+                            <button type="button" onClick={() => setMobileSubmenu(mobileSubmenu === room.name ? null : room.name)} className="flex w-full items-center justify-between px-1 py-1 text-[10px] text-black/40 transition-colors hover:text-[#ff784e]">
+                              <span>View All</span>
+                              <ChevronDown size={12} className={`transition-transform duration-300 ${mobileSubmenu === room.name ? "rotate-180 text-[#ff784e]" : ""}`} />
+                            </button>
+                            <div className="ml-1 border-l-2 border-[#ff784e] pl-2">
+                              {room.children.map((child) => (
+                                <Link key={child.name} href={child.href} onClick={closeMobileMenu} className="block py-1 text-[10px] text-black/50 transition-colors hover:text-[#ff784e]">
+                                  {child.name}
+                                </Link>
+                              ))}
+                            </div>
                           </div>
-                        </div>
-                      )}
-                    </div>
-                  ))}
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
-            </div>
+            ) : (
+              <Link href="/rooms" onClick={closeMobileMenu} className="flex items-center border-b border-black/[0.07] px-2 py-3 text-[12px] font-semibold uppercase tracking-wide text-black transition-colors hover:text-[#ff784e] sm:py-4 sm:text-[13px]">
+                Rooms & Suites
+              </Link>
+            )}
 
 
             {["About", "Dining", "Facilities", "Contact"].map((name) => (

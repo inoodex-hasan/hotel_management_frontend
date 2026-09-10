@@ -32,78 +32,35 @@ const iconMap: Record<string, React.ComponentType<{ size?: number; strokeWidth?:
   ShieldCheck,
 };
 
-const DEFAULT_FACILITIES: FacilityItem[] = [
-  {
-    id: 1,
-    title: "Infinity Pool",
-    subtitle: "Relax & Refresh",
-    description: "Take a refreshing break and unwind beside our beautifully designed pool.",
-    image: "/images/facilities/pool.webp",
-    icon: "Waves",
-    features: ["Heated Pool", "Poolside Bar"],
-  },
-  {
-    id: 2,
-    title: "Fine Dining",
-    subtitle: "Taste & Discover",
-    description: "Enjoy carefully crafted dishes prepared with fresh ingredients.",
-    image: "/images/facilities/dining.avif",
-    icon: "Utensils",
-    features: ["International Menu", "Private Dining"],
-  },
-  {
-    id: 3,
-    title: "Spa & Wellness",
-    subtitle: "Relax & Rejuvenate",
-    description: "Restore your body and mind with our relaxing wellness experience.",
-    image: "/images/facilities/spa.avif",
-    icon: "Sparkles",
-    features: ["Couples Treatment", "Sauna"],
-  },
-  {
-    id: 4,
-    title: "Fitness Center",
-    subtitle: "Move & Energize",
-    description: "Stay active with modern equipment available throughout your stay.",
-    image: "/images/facilities/gym.webp",
-    icon: "Dumbbell",
-    features: ["Modern Equipment", "24/7 Access"],
-  },
-  {
-    id: 5,
-    title: "Private Parking",
-    subtitle: "Easy & Convenient",
-    description: "Secure and convenient parking for a worry-free arrival.",
-    image: "/images/facilities/parking.jpg",
-    icon: "Car",
-    features: ["24/7 Security", "Valet Service"],
-  },
-  {
-    id: 6,
-    title: "High-Speed Wi-Fi",
-    subtitle: "Always Connected",
-    description: "Stay connected with reliable high-speed Wi-Fi throughout the hotel.",
-    image: "/images/facilities/wifi.avif",
-    icon: "Wifi",
-    features: ["Fiber Optic", "No Limits"],
-  },
-];
-
 export default function FacilitiesSection() {
   const sectionRef = useRef<HTMLElement>(null);
-  const [facilities, setFacilities] = useState<FacilityItem[]>(DEFAULT_FACILITIES);
+  const [facilities, setFacilities] = useState<FacilityItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    let isMounted = true;
     getFacilities()
       .then((data) => {
-        if (data && data.length > 0) {
-          setFacilities(data);
+        if (isMounted) {
+          setFacilities(data || []);
         }
       })
       .catch((err) => {
         console.warn("Failed to load facilities:", err);
+      })
+      .finally(() => {
+        if (isMounted) {
+          setIsLoading(false);
+        }
       });
+    return () => {
+      isMounted = false;
+    };
   }, []);
+
+  if (!isLoading && facilities.length === 0) {
+    return null;
+  }
 
   useEffect(() => {
     const ctx = gsap.context(() => {
@@ -286,14 +243,15 @@ function FacilityCard({
       {/* IMAGE */}
       {/* ================================================= */}
 
-      <img
-        src={facility.image || "/images/facilities/pool.webp"}
-        alt={facility.title}
-        className="absolute inset-0 h-full w-full object-cover transition-transform duration-1000 ease-out group-hover:scale-110"
-        onError={(e) => {
-          (e.currentTarget as HTMLImageElement).src = "/images/facilities/pool.webp";
-        }}
-      />
+      {facility.image ? (
+        <img
+          src={facility.image}
+          alt={facility.title}
+          className="absolute inset-0 h-full w-full object-cover transition-transform duration-1000 ease-out group-hover:scale-110"
+        />
+      ) : (
+        <div className="absolute inset-0 bg-gradient-to-br from-[#1a1a1a] via-[#141414] to-black" />
+      )}
 
       {/* Dark Overlay */}
       <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent opacity-90 transition-all duration-500 group-hover:opacity-100" />
