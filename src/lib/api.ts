@@ -200,29 +200,89 @@ export interface ContactPayload {
   message: string;
 }
 
-async function fetchJson<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-  const url = `${API_BASE_URL}${endpoint.startsWith("/") ? endpoint : `/${endpoint}`}`;
-  const res = await fetch(url, {
-    cache: "no-store",
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-      ...(options.headers || {}),
-    },
-  });
+interface CacheEntry<T> {
+  data: T;
+  timestamp: number;
+}
 
-  if (!res.ok) {
-    let errorData: any = {};
-    try {
-      errorData = await res.json();
-    } catch {
-      errorData = { message: res.statusText };
+const memoryCache = new Map<string, CacheEntry<any>>();
+const inFlightRequests = new Map<string, Promise<any>>();
+const DEFAULT_TTL = 60 * 1000; // 60 seconds
+
+/**
+ * Clear client-side in-memory cache
+ */
+export function clearClientCache(): void {
+  memoryCache.clear();
+  inFlightRequests.clear();
+}
+
+async function fetchJson<T>(endpoint: string, options: RequestInit = {}, ttl: number = DEFAULT_TTL): Promise<T> {
+  const url = `${API_BASE_URL}${endpoint.startsWith("/") ? endpoint : `/${endpoint}`}`;
+  const isGet = !options.method || options.method.toUpperCase() === "GET";
+  const isBrowser = typeof window !== "undefined";
+
+  if (isBrowser && isGet) {
+    const cached = memoryCache.get(url);
+    if (cached && Date.now() - cached.timestamp < ttl) {
+      return cached.data as T;
     }
-    throw new Error(errorData.message || `Request failed with status ${res.status}`);
+
+    if (inFlightRequests.has(url)) {
+      return inFlightRequests.get(url) as Promise<T>;
+    }
   }
 
-  return res.json();
+  const fetchPromise = (async () => {
+    try {
+      const fetchOptions: RequestInit & { next?: { revalidate?: number | false; tags?: string[] } } = {
+        ...options,
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          ...(options.headers || {}),
+        },
+      };
+
+      // In server environment, enable Next.js ISR caching (revalidate every 30 seconds)
+      if (!isBrowser && isGet && !fetchOptions.next && !fetchOptions.cache) {
+        fetchOptions.next = { revalidate: 30 };
+      }
+
+      const res = await fetch(url, fetchOptions);
+
+      if (!res.ok) {
+        let errorData: any = {};
+        try {
+          errorData = await res.json();
+        } catch {
+          errorData = { message: res.statusText };
+        }
+        throw new Error(errorData.message || `Request failed with status ${res.status}`);
+      }
+
+      const json = await res.json();
+
+      if (isBrowser && isGet) {
+        memoryCache.set(url, {
+          data: json,
+          timestamp: Date.now(),
+        });
+      }
+
+      return json as T;
+    } finally {
+      if (isBrowser && isGet) {
+        inFlightRequests.delete(url);
+      }
+    }
+  })();
+
+  if (isBrowser && isGet) {
+    inFlightRequests.set(url, fetchPromise);
+  }
+
+  return fetchPromise;
 }
 
 function normalizeRoomType(r: RoomType): RoomType {

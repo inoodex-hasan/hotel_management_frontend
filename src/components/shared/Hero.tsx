@@ -102,14 +102,20 @@ function computeDropdownPos(
   }
 }
 
-export default function Hero() {
+export default function Hero({
+  initialSlides = [],
+  initialSettings = null,
+}: {
+  initialSlides?: HeroSlide[];
+  initialSettings?: HotelSettings | null;
+}) {
   const heroRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const bookingRef = useRef<HTMLDivElement>(null);
   const slideRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const [slides, setSlides] = useState<HeroSlide[]>([]);
-  const [settings, setSettings] = useState<HotelSettings | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [slides, setSlides] = useState<HeroSlide[]>(initialSlides);
+  const [settings, setSettings] = useState<HotelSettings | null>(initialSettings);
+  const [isLoading, setIsLoading] = useState(initialSlides.length === 0);
   const [current, setCurrent] = useState(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -127,11 +133,15 @@ export default function Hero() {
   const [roomsPos, setRoomsPos] = useState<DropdownPos>({ left: 0 });
 
   useEffect(() => {
+    if (slides.length > 0 && settings) {
+      setIsLoading(false);
+      return;
+    }
     let isMounted = true;
     Promise.allSettled([getHeroSlides(), getSettings()]).then(([slidesRes, settingsRes]) => {
       if (!isMounted) return;
-      if (slidesRes.status === "fulfilled") {
-        setSlides(slidesRes.value || []);
+      if (slidesRes.status === "fulfilled" && slidesRes.value?.length) {
+        setSlides(slidesRes.value);
       }
       if (settingsRes.status === "fulfilled" && settingsRes.value) {
         setSettings(settingsRes.value);
@@ -141,7 +151,7 @@ export default function Hero() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [slides.length, settings]);
 
   const closeAll = () => { setDateOpen(false); setGuestsOpen(false); setRoomsOpen(false); };
 

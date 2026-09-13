@@ -8,17 +8,25 @@ import { getTestimonials, TestimonialItem } from "@/lib/api";
 
 gsap.registerPlugin(ScrollTrigger);
 
-export default function TestimonialsSection() {
+export default function TestimonialsSection({
+  initialTestimonials = [],
+}: {
+  initialTestimonials?: TestimonialItem[];
+}) {
   const sectionRef = useRef<HTMLElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
-  const [items, setItems] = useState<TestimonialItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [items, setItems] = useState<TestimonialItem[]>(initialTestimonials);
+  const [isLoading, setIsLoading] = useState(initialTestimonials.length === 0);
   const [activeIndex, setActiveIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Fetch dynamic testimonials
+  // Fetch dynamic testimonials if not provided
   useEffect(() => {
+    if (items.length > 0) {
+      setIsLoading(false);
+      return;
+    }
     let isMounted = true;
     getTestimonials()
       .then((data) => {
@@ -37,7 +45,7 @@ export default function TestimonialsSection() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [items.length]);
 
   useEffect(() => {
     if (items.length === 0) return;

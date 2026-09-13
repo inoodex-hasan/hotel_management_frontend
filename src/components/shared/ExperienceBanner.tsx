@@ -9,15 +9,20 @@ import { getSettings, HotelSettings, formatImageUrl } from "@/lib/api";
 
 gsap.registerPlugin(ScrollTrigger);
 
-export default function ExperienceBanner() {
+export default function ExperienceBanner({
+  initialSettings = null,
+}: {
+  initialSettings?: HotelSettings | null;
+}) {
   const sectionRef = useRef<HTMLElement>(null);
-  const [settings, setSettings] = useState<HotelSettings | null>(null);
+  const [settings, setSettings] = useState<HotelSettings | null>(initialSettings);
 
   useEffect(() => {
+    if (settings) return;
     getSettings().then((data) => {
       if (data) setSettings(data);
     });
-  }, []);
+  }, [settings]);
 
   const label = settings?.experience_label || "The Azura Experience";
   const title = settings?.experience_title || "Where every stay becomes a memory.";

@@ -14,12 +14,21 @@ import { getDiningVenues, DiningItem } from "@/lib/api";
 
 gsap.registerPlugin(ScrollTrigger);
 
-export default function DiningSection() {
+export default function DiningSection({
+  initialVenues = [],
+}: {
+  initialVenues?: DiningItem[];
+}) {
   const sectionRef = useRef<HTMLElement>(null);
-  const [venue, setVenue] = useState<DiningItem | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const initialVenue = initialVenues.length > 0 ? initialVenues[0] : null;
+  const [venue, setVenue] = useState<DiningItem | null>(initialVenue);
+  const [isLoading, setIsLoading] = useState(!initialVenue);
 
   useEffect(() => {
+    if (venue) {
+      setIsLoading(false);
+      return;
+    }
     let isMounted = true;
     getDiningVenues()
       .then((venues) => {
@@ -38,7 +47,7 @@ export default function DiningSection() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [venue]);
 
   useEffect(() => {
     if (!venue) return;

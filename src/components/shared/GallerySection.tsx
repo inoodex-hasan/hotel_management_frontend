@@ -13,15 +13,23 @@ import { getGalleryItems, GalleryItem } from "@/lib/api";
 
 gsap.registerPlugin(ScrollTrigger);
 
-export default function GallerySection() {
+export default function GallerySection({
+  initialItems = [],
+}: {
+  initialItems?: GalleryItem[];
+}) {
   const sectionRef = useRef<HTMLElement>(null);
-  const [items, setItems] = useState<GalleryItem[]>([]);
+  const [items, setItems] = useState<GalleryItem[]>(initialItems);
   const [activeCategory, setActiveCategory] = useState<string>("All");
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState<boolean>(initialItems.length === 0);
 
-  // Fetch gallery items from API
+  // Fetch gallery items from API if not provided
   useEffect(() => {
+    if (items.length > 0) {
+      setIsLoading(false);
+      return;
+    }
     let isMounted = true;
     async function loadGallery() {
       try {
@@ -39,7 +47,7 @@ export default function GallerySection() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [items.length]);
 
   // Compute unique categories
   const categories = useMemo(() => {

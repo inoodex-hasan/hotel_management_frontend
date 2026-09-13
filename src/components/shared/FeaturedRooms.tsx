@@ -32,25 +32,38 @@ function formatRoomCard(r: any, i: number) {
   };
 }
 
-export default function FeaturedRooms() {
+export default function FeaturedRooms({
+  initialRooms = [],
+}: {
+  initialRooms?: RoomType[];
+}) {
   const sectionRef = useRef<HTMLElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const [rooms, setRooms] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const formattedInitial = initialRooms.length > 0
+    ? initialRooms.slice(0, 5).map((r, i) => formatRoomCard(r, i))
+    : [];
+  const [rooms, setRooms] = useState<any[]>(formattedInitial);
+  const [isLoading, setIsLoading] = useState(formattedInitial.length === 0);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(true);
   const [activeSlide, setActiveSlide] = useState(0);
 
   useEffect(() => {
+    if (rooms.length > 0) {
+      setIsLoading(false);
+      return;
+    }
     setIsLoading(true);
-    getRoomTypes().then((data) => {
-      setRooms((data || []).slice(0, 5).map((r, i) => formatRoomCard(r, i)));
-      setIsLoading(false);
-    }).catch(() => {
-      setRooms([]);
-      setIsLoading(false);
-    });
-  }, []);
+    getRoomTypes()
+      .then((data) => {
+        setRooms((data || []).slice(0, 5).map((r, i) => formatRoomCard(r, i)));
+        setIsLoading(false);
+      })
+      .catch(() => {
+        setRooms([]);
+        setIsLoading(false);
+      });
+  }, [rooms.length]);
 
   const checkScroll = () => {
     const el = scrollRef.current;

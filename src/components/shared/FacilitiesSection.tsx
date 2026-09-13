@@ -32,12 +32,20 @@ const iconMap: Record<string, React.ComponentType<{ size?: number; strokeWidth?:
   ShieldCheck,
 };
 
-export default function FacilitiesSection() {
+export default function FacilitiesSection({
+  initialFacilities = [],
+}: {
+  initialFacilities?: FacilityItem[];
+}) {
   const sectionRef = useRef<HTMLElement>(null);
-  const [facilities, setFacilities] = useState<FacilityItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [facilities, setFacilities] = useState<FacilityItem[]>(initialFacilities);
+  const [isLoading, setIsLoading] = useState(initialFacilities.length === 0);
 
   useEffect(() => {
+    if (facilities.length > 0) {
+      setIsLoading(false);
+      return;
+    }
     let isMounted = true;
     getFacilities()
       .then((data) => {
@@ -56,7 +64,7 @@ export default function FacilitiesSection() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [facilities.length]);
 
   useEffect(() => {
     if (facilities.length === 0) return;

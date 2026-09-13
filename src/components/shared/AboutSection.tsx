@@ -9,12 +9,20 @@ import { getAboutContent, AboutContent, formatImageUrl } from "@/lib/api";
 
 gsap.registerPlugin(ScrollTrigger);
 
-export default function AboutSection() {
+export default function AboutSection({
+  initialAbout = null,
+}: {
+  initialAbout?: AboutContent | null;
+}) {
   const sectionRef = useRef<HTMLElement>(null);
-  const [about, setAbout] = useState<AboutContent | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [about, setAbout] = useState<AboutContent | null>(initialAbout);
+  const [isLoading, setIsLoading] = useState(!initialAbout);
 
   useEffect(() => {
+    if (about) {
+      setIsLoading(false);
+      return;
+    }
     let isMounted = true;
     getAboutContent()
       .then((data) => {
@@ -32,7 +40,7 @@ export default function AboutSection() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [about]);
 
   useEffect(() => {
     if (!about) return;
