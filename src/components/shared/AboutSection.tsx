@@ -83,8 +83,12 @@ export default function AboutSection() {
     return null;
   }
 
-  const mainImg = formatImageUrl(about?.main_image || about?.main_image_url);
-  const subImg = formatImageUrl(about?.sub_image || about?.sub_image_url);
+  if (!about) {
+    return null;
+  }
+
+  const mainImg = formatImageUrl(about.main_image || about.main_image_url);
+  const subImg = formatImageUrl(about.sub_image || about.sub_image_url);
 
   return (
     <section ref={sectionRef} className="relative overflow-hidden bg-gradient-to-br from-[#1a1a1a] via-[#121212] to-[#1c1008] py-16 sm:py-24 lg:py-32">

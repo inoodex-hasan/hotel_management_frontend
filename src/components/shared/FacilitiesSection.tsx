@@ -58,11 +58,9 @@ export default function FacilitiesSection() {
     };
   }, []);
 
-  if (!isLoading && facilities.length === 0) {
-    return null;
-  }
-
   useEffect(() => {
+    if (facilities.length === 0) return;
+
     const ctx = gsap.context(() => {
       gsap.from(".facility-heading", {
         y: 60,
@@ -103,7 +101,15 @@ export default function FacilitiesSection() {
     }, sectionRef);
 
     return () => ctx.revert();
-  }, []);
+  }, [facilities]);
+
+  if (!isLoading && facilities.length === 0) {
+    return null;
+  }
+
+  if (facilities.length === 0) {
+    return null;
+  }
 
   return (
     <section

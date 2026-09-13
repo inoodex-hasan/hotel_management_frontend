@@ -41,10 +41,6 @@ export default function GallerySection() {
     };
   }, []);
 
-  if (!isLoading && items.length === 0) {
-    return null;
-  }
-
   // Compute unique categories
   const categories = useMemo(() => {
     const cats = Array.from(new Set(items.map((i) => i.category).filter(Boolean)));
@@ -61,6 +57,8 @@ export default function GallerySection() {
 
   // GSAP Animations
   useEffect(() => {
+    if (items.length === 0) return;
+
     const ctx = gsap.context(() => {
       gsap.from(".gallery-heading", {
         y: 50,
@@ -113,7 +111,7 @@ export default function GallerySection() {
     }, sectionRef);
 
     return () => ctx.revert();
-  }, [isLoading, activeCategory]);
+  }, [items, activeCategory]);
 
   // Keyboard navigation for Lightbox
   useEffect(() => {
@@ -132,6 +130,14 @@ export default function GallerySection() {
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [activeIndex, filteredItems.length]);
+
+  if (!isLoading && items.length === 0) {
+    return null;
+  }
+
+  if (items.length === 0) {
+    return null;
+  }
 
   return (
     <>

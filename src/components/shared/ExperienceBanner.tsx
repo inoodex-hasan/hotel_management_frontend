@@ -107,7 +107,7 @@ export default function ExperienceBanner() {
             loop
             muted
             playsInline
-            poster={image}
+            poster={image || undefined}
             className="experience-bg absolute inset-0 h-full w-full object-cover"
           >
             <source src={videoUrl} type="video/mp4" />

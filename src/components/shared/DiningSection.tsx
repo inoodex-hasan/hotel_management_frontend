@@ -40,11 +40,9 @@ export default function DiningSection() {
     };
   }, []);
 
-  if (!venue) {
-    return null;
-  }
-
   useEffect(() => {
+    if (!venue) return;
+
     const ctx = gsap.context(() => {
       const tl = gsap.timeline({
         scrollTrigger: {
@@ -115,7 +113,15 @@ export default function DiningSection() {
     }, sectionRef);
 
     return () => ctx.revert();
-  }, []);
+  }, [venue]);
+
+  if (!isLoading && !venue) {
+    return null;
+  }
+
+  if (!venue) {
+    return null;
+  }
 
   return (
     <section

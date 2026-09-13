@@ -39,14 +39,9 @@ export default function TestimonialsSection() {
     };
   }, []);
 
-  if (!isLoading && items.length === 0) {
-    return null;
-  }
-
-  const active = items[activeIndex] || items[0];
-  if (!active) return null;
-
   useEffect(() => {
+    if (items.length === 0) return;
+
     const ctx = gsap.context(() => {
       gsap.from(".testimonial-heading", {
         y: 60,
@@ -75,7 +70,7 @@ export default function TestimonialsSection() {
     }, sectionRef);
 
     return () => ctx.revert();
-  }, []);
+  }, [items]);
 
   const animateTo = useCallback(
     (index: number) => {
@@ -135,6 +130,15 @@ export default function TestimonialsSection() {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
   }, [isPaused, items.length]);
+
+  if (!isLoading && items.length === 0) {
+    return null;
+  }
+
+  const active = items[activeIndex] || items[0];
+  if (!active) {
+    return null;
+  }
 
   return (
     <section
